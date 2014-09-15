@@ -5,11 +5,15 @@ StorScore is a component-level evaluation tool for testing storage devices.
 When run with default settings it should give realistic metrics similar to
 what can be expected by a Windows application developer.
 
+Background
+----------
+
 We were motivated to write StorScore because most existing solutions had
 some problems:
-    1. Difficult to automate (GUI tools)
-    2. Don't properly measure SSDs (history effect, endurance)
-    3. Linux-centric
+
+1.      Difficult to automate (GUI tools)
+2.      Don't properly measure SSDs (history effect, endurance)
+3.      Linux-centric
 
 StorScore is driven by a "recipe" file, which, like all good things, is just
 another Perl script.  The recipe is simply a series of steps to be followed.
@@ -36,6 +40,9 @@ The Excel file has the usual raw metrics (throughput, latency, etc.) but also
 contains the result of our scoring system, which we designed to help summarize
 what would otherwise be far too much data (hence the name: StorScore).
 
+Dependencies
+------------
+
 StorScore depends on some "external" software components.
 
 You must download and install the following or StorScore will not work:
@@ -56,18 +63,24 @@ disabled:
     Ipmiutil.exe, from the IPMI Management Utilities:
         http://ipmiutil.sourceforge.net/
 
+
 StorScore includes the following components "in the box."  We would like
 to thank the authors and acknowledge their contribution:
 
     The excellent Perl library, Excel::Writer::XLSX, by John McNamara.
+        http://search.cpan.org/~jmcnamara/Excel-Writer-XLSX/lib/Excel/Writer/XLSX.pm        
 
     DiskSpd.exe: an IO generator from the Microsoft Windows team.
-   
+        http://aka.ms/diskspd
+        https://github.com/microsoft/diskspd
+
     SQLIO2.exe: an IO generator from the Microsoft SQL Server team.
+
+Feedback?
+---------
 
 Questions, comments, bug reports, and especially accolades may be directed
 to the developers:
-    Laura Caulfield <lauraca@microsoft.com>
-    Mark Santaniello <marksan@microsoft.com>
-    Bikash Sharma <bsharma@microsoft.com>
-
+-       Laura Caulfield <lauraca@microsoft.com>
+-       Mark Santaniello <marksan@microsoft.com>
+-       Bikash Sharma <bsharma@microsoft.com>
