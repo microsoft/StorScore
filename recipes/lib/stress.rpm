@@ -1,0 +1,77 @@
+# vim: set filetype=perl:
+
+# StorScore
+#
+# Copyright (c) Microsoft Corporation
+#
+# All rights reserved. 
+#
+# MIT License
+#
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the "Software"),
+# to deal in the Software without restriction, including without limitation
+# the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED *AS IS*, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+# DEALINGS IN THE SOFTWARE.
+
+sub do_stress_tests($)
+{
+    my $hours = shift;
+
+    my $SECONDS_PER_HOUR = 60 * 60;
+
+    my @access_patterns = qw( random sequential );
+    my @block_sizes = qw( 4K 1M );
+    my @write_percentages = qw( 0 100 );
+
+    my $num_tests =
+        @access_patterns * @block_sizes * @write_percentages; 
+
+    return unless $num_tests > 0;
+
+    while( $hours-- )
+    {
+        # 1 hour per turn of this loop
+        foreach my $access_pattern ( @access_patterns )
+        {
+            foreach my $block_size ( @block_sizes )
+            {
+                foreach my $write_percentage ( @write_percentages )
+                {
+                    my $read_percentage = 100 - $write_percentage;
+
+                    my $name_string =  
+                        "$read_percentage-reads-" . 
+                        "$write_percentage-writes-" .
+                        "$block_size-" .
+                        "$access_pattern-" .
+                        "QD32";
+
+                    test( 
+                        name_string         => $name_string, 
+                        write_percentage    => $write_percentage,
+                        access_pattern      => $access_pattern,
+                        block_size          => $block_size,
+                        queue_depth         => 32,
+                        warmup_time         => 0,
+                        run_time            => $SECONDS_PER_HOUR / $num_tests
+                    );
+                }
+            }
+        }
+    }
+}
+
+1;

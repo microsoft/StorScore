@@ -1,0 +1,84 @@
+# vim: set filetype=perl:
+
+# StorScore
+#
+# Copyright (c) Microsoft Corporation
+#
+# All rights reserved. 
+#
+# MIT License
+#
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the "Software"),
+# to deal in the Software without restriction, including without limitation
+# the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED *AS IS*, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+# DEALINGS IN THE SOFTWARE.
+
+sub do_matrix
+{
+    my %args = @_;
+
+    my @access_patterns   = @{$args{'access_patterns'}};
+    my @queue_depths      = @{$args{'queue_depths'}};
+    my @block_sizes       = @{$args{'block_sizes'}};
+    my @write_percentages = @{$args{'write_percentages'}};
+    my $warmup_time       = $args{'warmup_time'};
+    my $run_time          = $args{'run_time'};
+
+    @access_patterns = reverse sort @access_patterns; 
+    @queue_depths = reverse sort { $a <=> $b } @queue_depths;
+    @block_sizes = reverse sort by_human @block_sizes;
+    @write_percentages = reverse sort { $a <=> $b } @write_percentages;
+
+    foreach my $access_pattern ( @access_patterns )
+    {
+        foreach my $block_size ( @block_sizes )
+        {
+            foreach my $write_percentage ( @write_percentages )
+            {
+                my $read_percentage = 100 - $write_percentage;
+
+                foreach my $queue_depth ( @queue_depths )
+                {
+                    my $name_string =  
+                        "$read_percentage-reads-" . 
+                        "$write_percentage-writes-" .
+                        "$block_size-$access_pattern-" .
+                        "QD$queue_depth";
+
+                    precondition( 
+                        name_string         => $name_string, 
+                        write_percentage    => $write_percentage,
+                        access_pattern      => $access_pattern,
+                        block_size          => $block_size,
+                        queue_depth         => $queue_depth,
+                    );
+
+                    test( 
+                        name_string         => $name_string, 
+                        write_percentage    => $write_percentage,
+                        access_pattern      => $access_pattern,
+                        block_size          => $block_size,
+                        queue_depth         => $queue_depth,
+                        warmup_time         => $warmup_time,
+                        run_time            => $run_time
+                    );
+                }
+            }
+        }
+    }
+}
+
+1;

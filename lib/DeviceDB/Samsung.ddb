@@ -1,0 +1,83 @@
+# vim: set filetype=perl:
+
+# StorScore
+#
+# Copyright (c) Microsoft Corporation
+#
+# All rights reserved. 
+#
+# MIT License
+#
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the "Software"),
+# to deal in the Software without restriction, including without limitation
+# the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED *AS IS*, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+# DEALINGS IN THE SOFTWARE.
+
+package DeviceDB::Samsung; 
+
+use strict;
+use warnings;
+use DeviceDB;
+use Util;
+
+$device_db{'SAMSUNG MZ7TE480HMHP-00003'} =
+{
+    'Friendly Name'               => 'Samsung PM853 480GB',
+    'Rated PE Cycles'             => 3000,
+};
+
+$device_db{'SAMSUNG MZ7TE960HMHP-00003'} = 
+{
+    'Friendly Name'               => 'Samsung PM853 960GB',
+    'Rated PE Cycles'             => 3000,
+};
+
+$device_db{'SAMSUNG MZ7WD480HAGM-00003'} =
+{
+    'Friendly Name'               => 'Samsung SM843T 21nm 480GB',
+    'Rated PE Cycles'             => 18000,
+};
+
+$device_db{'SAMSUNG MZ7WD480HCGM-000MV'} =
+{
+    'Friendly Name'               => 'Samsung SM843Tn 19nm 480GB',
+    # Version DXM91MT6 firmware only?
+    'Host Writes'   =>
+    {
+        'Attribute'       => 241,
+        'Unit'            => BYTES_PER_SECTOR,
+    },
+    'Controller Writes' =>
+    {
+        'Attribute' => 243,
+        'Unit'      => BYTES_PER_SECTOR,
+    },
+    'Rated PE Cycles'             => 18000,
+};
+
+$device_db{'SAMSUNG MZ7WD960HAGP-00003'} = 
+{
+    'Friendly Name'               => 'Samsung SM843T 21nm 960GB',
+    'Rated PE Cycles'             => 18000,
+};
+
+$device_db{'SAMSUNG MZ7WD960HMHP-000MV'} = 
+{
+    'Friendly Name'               => 'Samsung SV843 960GB',
+    'Rated PE Cycles'             => 35000,
+};
+
+1;

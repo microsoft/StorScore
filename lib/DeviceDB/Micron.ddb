@@ -1,0 +1,113 @@
+# vim: set filetype=perl:
+
+# StorScore
+#
+# Copyright (c) Microsoft Corporation
+#
+# All rights reserved. 
+#
+# MIT License
+#
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the "Software"),
+# to deal in the Software without restriction, including without limitation
+# the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED *AS IS*, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+# DEALINGS IN THE SOFTWARE.
+
+package DeviceDB::Micron; 
+
+use strict;
+use warnings;
+use DeviceDB;
+use Util;
+
+$device_db{'Micron_M500_MTFDDAK480MAV'} =
+{
+    'Friendly Name'               => 'Micron M500 480GB',
+    'Rated PE Cycles'             => 3000,
+    'Host Writes'   =>
+    {
+        'Attribute'       => 247,
+        'Unit'            => 32 * BYTES_PER_SECTOR,
+    },
+    'Controller Writes' =>
+    {
+        'Attribute' => 248,
+        'Unit'      => 32 * BYTES_PER_SECTOR,
+        'Additive'  => 1,
+    }
+};
+
+$device_db{'Micron_M500_MTFDDAK960MAV'} =
+{
+    'Friendly Name'               => 'Micron M500 960GB',
+    'Rated PE Cycles'             => 3000,
+    'Host Writes'   =>
+    {
+        'Attribute'       => 247,
+        'Unit'            => 32 * BYTES_PER_SECTOR,
+    },
+    'Controller Writes' =>
+    {
+        'Attribute' => 248,
+        'Unit'      => 32 * BYTES_PER_SECTOR,
+        'Additive'  => 1,
+    }
+};
+
+$device_db{'Micron_M500DC_MTFDDAK480MBB'} =
+{
+    # Version 2814 firmware only?
+    'Friendly Name'     => 'Micron M500 DC 480GB',
+    'Rated PE Cycles'   => 5000,
+    'Internal Capacity' => '768 GB',
+    'Host Writes'   =>
+    {
+        'Attribute' => 247,
+        'Unit'      => 32 * BYTES_PER_SECTOR,
+    },
+    'Controller Writes' =>
+    {
+        'Attribute' => 248,
+        'Unit'      => 32 * BYTES_PER_SECTOR,
+        'Additive'  => 1,
+    }
+};
+
+$device_db{'Micron_M500DC_MTFDDAK800MBB'} =
+{
+    # Version 2814 firmware only?
+    'Friendly Name'     => 'Micron M500 DC 800GB',
+    'Rated PE Cycles'   => 5000,
+    'Host Writes'   =>
+    {
+        'Attribute' => 247,
+        'Unit'      => 32 * BYTES_PER_SECTOR,
+    },
+    'Controller Writes' =>
+    {
+        'Attribute' => 248,
+        'Unit'      => 32 * BYTES_PER_SECTOR,
+        'Additive'  => 1,
+    }
+};
+
+$device_db{'C400-MTFDDAK512MAM'} =
+{
+    'Friendly Name'               => 'Micron C400 512GB',
+    'Rated PE Cycles'             => 3000,
+};
+
+1;

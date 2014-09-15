@@ -1,0 +1,34 @@
+The two key command lines are:
+
+$> StorScore.cmd
+$> parse_results.cmd
+
+Running them without any flags will print some text to guide you the rest of
+the way.  You can easily define new recipes -- check out the examples
+in the "recipes" directory, and reference any new recipe file with the
+--recipe flag:
+
+$> StorScore.cmd --recipe=recipe\newRecipe.rcp
+
+The results will go in the ÎéÎíresultsÎéÎí directory.  You can browse the
+files by hand, but I recommend parsing into an excel file like this:
+
+$>  parse_results.cmd results\* results.xlsx
+
+You can move the direct child driectories of the results directory around.
+For example, you might make another layer of directory tree like this:
+
+Before:
+Results\<all test runs -- one directory per test run>
+
+After:
+Results\DriveBatch1\<some test runs>
+Results\DriveBatch2\<some test runs>
+
+Then when you parse, you can evaluate just drive batch 1 with the following:
+
+$>parse_results.cmd results\DriveBatch1\* results_batch_1.xlsx
+
+One final point -- the scoring works best if you use the same recipe on all
+the test runs in a batch.  If you use different recipes, there may not be
+enough overlap in the workloads run on each drive to generate a score.
