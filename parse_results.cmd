@@ -728,7 +728,6 @@ sub try_suffix_column
     
     my $name = $args{'name'} // die;
     my $all_stats_ref = $args{'all_stats_ref'} // die;
-    my $is_percentage = $args{'is_percentage'} // 0;
     
     my @all_stats = @{ $all_stats_ref };
 
@@ -753,12 +752,6 @@ sub try_suffix_column
         {
             my $val = $stats_ref->{$name};
        
-            if( $is_percentage )
-            {
-                $val *= 100;
-                $val .= '%'
-            }
-
             $stats_ref->{'Display Name'} .= " - $val"
         }
     }
@@ -827,7 +820,6 @@ sub build_display_names(@)
     # If that wasn't enough, try suffixing the test's default compressibility
     try_suffix_column(
         name => 'Default Compressibility',
-        is_percentage => 1,
         all_stats_ref => \@all_stats
     );
 
