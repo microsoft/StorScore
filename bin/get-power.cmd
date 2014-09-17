@@ -3,12 +3,15 @@
 @rem = '
 @echo off
 setlocal
+set PATH=%~dp0;%PATH%
 perl -w %~f0 %*
 exit /B %ERRORLEVEL%
 ';
 use strict;
 use warnings;
 use English;
+
+$OUTPUT_AUTOFLUSH = 1;
 
 use FindBin;
 use lib "$FindBin::Bin\\..\\lib";
