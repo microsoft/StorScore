@@ -51,7 +51,7 @@ You must download and install the following or StorScore will not work:
         ActiveState: http://www.activestate.com/activeperl
         Strawberry: http://strawberryperl.com/
     
-    The Visual Studio 2013 C++ runtime libraries for x86 &amp; x64:
+    The Visual Studio 2013 C++ runtime libraries for x86 & x64:
         http://www.microsoft.com/en-us/download/details.aspx?id=40784
 
 StorScore will work without these components, but some features will be
