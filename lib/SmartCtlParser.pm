@@ -96,7 +96,7 @@ sub parse_attributes($$$)
     
     unless( defined $ddb_ref )
     {
-        warn "\tNo entry in device_db. Will not parse SMART attributes.\n";
+        warn "\tNo entry in DeviceDB. Will not parse SMART attributes.\n";
         return 0;
     }
 

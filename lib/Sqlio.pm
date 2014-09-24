@@ -137,7 +137,7 @@ sub run($$)
             $compressibility // $self->default_comp
         );
 
-    $cmd .= "-q$entropy_file ";
+    $cmd .= qq(-q"$entropy_file" );
     
     if( $self->raw_disk )
     {
@@ -167,7 +167,7 @@ sub run($$)
 
     close( $OUT );
 
-    die "Sqlio2 returned non-zero errorlevel" if $errorlevel;
+    print STDERR "\n\tSqlio2 returned non-zero errorlevel" if $errorlevel;
 }
 
 my @extract_rules_sqlio =

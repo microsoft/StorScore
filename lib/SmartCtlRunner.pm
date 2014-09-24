@@ -82,20 +82,24 @@ sub is_binary_present()
     return 1;
 }
 
-sub collect($;$)
+sub collect
 {
     my $self = shift;
     my $file_name = shift;
     my $dev_type = shift // $self->device_type;
 
-    $file_name = $self->output_dir . "\\$file_name"
-        unless is_absolute_path( $file_name );
-
     my $cmd = "smartctl.exe ";
     $cmd .= "-d $dev_type " if defined $dev_type;
     $cmd .= "-a /dev/pd" . $self->pdnum . " ";
     $cmd .= "-s on ";
-    $cmd .= "> $file_name";
+
+    if( defined $file_name )
+    {
+        $file_name = $self->output_dir . "\\$file_name"
+            unless is_absolute_path( $file_name );
+
+        $cmd .= "> $file_name";
+    }
     
     return execute_task( $cmd, force => 1 );
 }

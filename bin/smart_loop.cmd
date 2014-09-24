@@ -4,7 +4,7 @@
 @echo off
 setlocal
 set PATH=%~dp0\..\perl\bin;%~dp0\..\bin;%PATH%
-perl -w %~f0 %*
+perl -w "%~f0" %*
 exit /B %ERRORLEVEL%
 ';
 use strict;
@@ -16,7 +16,7 @@ use FindBin;
 use lib "$FindBin::Bin\\..";
 use lib "$FindBin::Bin\\..\\lib";
 
-use SmartCtl;
+use SmartCtlRunner;
 
 my $script_name = basename( $PROGRAM_NAME, ".cmd" );
 
@@ -30,7 +30,7 @@ unless( defined $pdnum and $pdnum =~ /\d+/ )
     die "Usage: $script_name <physical drive number>\n";
 }
 
-my $smart = SmartCtl->new( pdnum => $pdnum );
+my $smart = SmartCtlRunner->new( pdnum => $pdnum );
 
 while( 1 )
 {

@@ -31,14 +31,6 @@ sub do_workload($$)
     my $name_string = shift;
     my $compressibility = shift;
 
-    precondition(
-        name_string         => $name_string, 
-        write_percentage    => 100, 
-        access_pattern      => 'random',
-        block_size          => '8K',
-        queue_depth         => 32
-    ); 
-
     test(
         name_string         => $name_string, 
         write_percentage    => 100, 
@@ -51,12 +43,6 @@ sub do_workload($$)
     ); 
 }
 
-# FIXME: Really wish we didn't need this diskspd check, but StorScore
-# currently has no other method by which we could skip both the
-# precondition and the test.
-unless( $gc{'io_generator'} eq 'diskspd' )
-{
-    # Compare these to detect devices which compress on the fly
-    do_workload( "Targeted Test Uncompressible", 0 );
-    do_workload( "Targeted Test 50 Percent Compressible", 50 );
-}
+# Compare these to detect devices which compress on the fly
+do_workload( "Targeted Test Uncompressible", 0 );
+do_workload( "Targeted Test 50 Percent Compressible", 50 );

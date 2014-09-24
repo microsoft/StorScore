@@ -178,13 +178,9 @@ sub try_legalize_arguments
             $step_ref->{'warmup_time'} = 5;
         }
     }
-    else
-    {
-        die unless $self->io_generator_type eq 'diskspd';
 
-        return 0 if defined $step_ref->{'compressibility'};
-    }
-
+    # N.B.: You can return zero here to skip this test
+    
     return 1;
 }
 
@@ -219,19 +215,6 @@ sub warn_illegal_args
             warn "$msg\n\n";
         }
     }
-    else
-    {
-        die unless $self->io_generator_type eq 'diskspd';
-
-        if( defined $step_ref->{'compressibility'} )
-        {
-            my $msg = "\tWarning!\n";
-            $msg .= "\tDiskSpd doesn't support variable entropy. ";
-            $msg .= "Will skip step ". $self->current_step . ".";
-
-            warn "$msg\n\n";
-        }
-    }
 }
 
 sub canonicalize_step
@@ -240,7 +223,7 @@ sub canonicalize_step
 
     my $kind = $step_ref->{'kind'};
     
-    return unless $kind ~~ [qw( test precondition )];
+    return unless $kind eq 'test';
 
     # create read_percentage from write_percentage
     $step_ref->{'read_percentage'} =
@@ -277,9 +260,8 @@ sub make_step
     my $kind = shift;
     my @args = @_;
       
-    # test and precondition use named-parameter idiom
-    return ( kind => $kind, @args ) 
-        if $kind ~~ [qw( test precondition )];
+    # test uses named-parameter idiom
+    return ( kind => $kind, @args ) if $kind eq 'test'; 
    
     # bg_exec has a single unnamed argument, the command
     return ( kind => $kind, command => shift @args )
@@ -301,9 +283,6 @@ sub handle_step
     my $do_warnings = shift;
     my $kind = shift;
     my @step_args = @_;
-    
-    # All done if the user wanted to skip preconditions
-    return if $kind eq 'precondition' and not $self->do_precondition;
     
     my %step = make_step( $kind, @step_args );
 
@@ -369,7 +348,7 @@ sub execute_recipe
     # Throw-away package to "insulate" us from the eval code
     my $package = "RecipeEval" . $eval_count++;
 
-    my @step_kinds = qw(test precondition bg_exec bg_killall idle);
+    my @step_kinds = qw(test bg_exec bg_killall idle);
 
     {
         no strict 'refs';
@@ -457,13 +436,6 @@ sub get_num_test_steps
     return scalar grep { $_->{'kind'} eq 'test' } @{$self->steps};
 }
 
-sub get_num_precondition_steps
-{
-    my $self = shift;
-    
-    return scalar grep { $_->{'kind'} eq 'precondition' } @{$self->steps};
-}
-
 sub estimate_step_run_time($;$)
 {
     my $self = shift;
@@ -476,7 +448,7 @@ sub estimate_step_run_time($;$)
     $time += $step_ref->{'run_time'} // 0;
     $time += $step_ref->{'warmup_time'} // 0;
 
-    if( $step_ref->{'kind'} eq 'precondition' )
+    if( $step_ref->{'kind'} eq 'test' and $self->do_precondition )
     {
         $time += $est_pc_time;
     }
@@ -577,27 +549,31 @@ sub run_step
 
     my $kind = $step_ref->{'kind'};
 
+    if( $kind eq 'test' and $self->do_precondition )
+    {
+        $self->preconditioner->run_to_steady_state(
+            "Preconditioning, ", $step_ref
+        );
+    }
+    
     my $progress = sprintf( 
         "[%3d/%3d] ", $self->current_step, $self->get_num_steps );
 
-    if( $kind ne 'precondition' )
-    {
-        my $announce = $self->get_announcement_message( $step_ref );
+    my $announce = $self->get_announcement_message( $step_ref );
 
-        my $time = $self->estimate_step_run_time( $step_ref );
+    my $time = $self->estimate_step_run_time( $step_ref );
 
-        my $eta = 
-            "ETA: " . strftime "%I:%M:%S %p", localtime( time() + $time );
+    my $eta = 
+        "ETA: " . strftime "%I:%M:%S %p", localtime( time() + $time );
 
-        my $cols_remaining =
-            80 - length( $progress )
-            - length( $announce )
-            - length( $eta ) - 1;
+    my $cols_remaining =
+        80 - length( $progress )
+        - length( $announce )
+        - length( $eta ) - 1;
 
-        my $pad = ' ' x $cols_remaining;
+    my $pad = ' ' x $cols_remaining;
 
-        print $progress . $announce . $pad . $eta;
-    }
+    print $progress . $announce . $pad . $eta;
 
     if( $kind eq 'test' )
     {
@@ -631,12 +607,6 @@ sub run_step
         $self->logman_runner->stop() if defined $self->logman_runner;
         $self->power->stop() if defined $self->power;
     }
-    elsif( $kind eq 'precondition' )
-    {
-        my $msg_prefix = $progress . "Preconditioning, ";
-
-        $self->preconditioner->run_to_steady_state( $msg_prefix, $step_ref );
-    }
     elsif( $kind eq 'idle' )
     {
         my $run_time = $step_ref->{'run_time'};
@@ -661,7 +631,7 @@ sub run_step
         @{$self->bg_pids} = ();
     }
 
-    print "\n" if $kind ne 'precondition';
+    print "\n";
 }
 
 sub run
@@ -699,10 +669,12 @@ sub warn_expected_run_time
 {
     my $self = shift;
 
-    my $num_pc = $self->get_num_precondition_steps();
+    my $num_pc =
+        $self->do_precondition ? $self->get_num_test_steps() : 0;
+
     my $est_pc_time = 0;
    
-    if( $self->do_precondition and $num_pc > 0 )
+    if( $num_pc > 0 )
     {
         if( $self->quick_test )
         {
@@ -737,7 +709,7 @@ sub warn_expected_run_time
         print ".\n";
     }
     
-    if( $self->do_precondition and $num_pc > 0 )
+    if( $num_pc > 0 )
     {
         my $human_pc_time = seconds_to_human( $est_pc_time ); 
         

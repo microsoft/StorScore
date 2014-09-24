@@ -4,7 +4,7 @@
 @echo off
 setlocal
 set PATH=%~dp0\..\perl\bin;%~dp0\..\bin;%PATH%
-perl -w %~f0 %*
+perl -w "%~f0" %*
 exit /B %ERRORLEVEL%
 ';
 

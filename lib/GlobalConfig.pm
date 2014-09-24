@@ -287,13 +287,6 @@ END
         }
     }
    
-    # It's not clear what level of entropy results from DiskSPD's
-    # rather simplistic method of write buffer initialization. 
-    if( $io_generator eq 'diskspd' and $compressibility != -1 )
-    {
-        die "DiskSpd doesn't support variable entropy.\n"
-    }
-  
     if( $compressibility == -1 )
     {
         $compressibility = 0; # default to 100% entropy

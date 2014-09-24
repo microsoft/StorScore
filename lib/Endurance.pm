@@ -46,7 +46,7 @@ sub compute_endurance($)
 
     unless( defined $ddb_ref )
     {
-        warn "\tNo entry in device_db. Cannot compute WAF.\n";
+        warn "\tNo entry in DeviceDB. Cannot compute WAF.\n";
         return;
     }
     

@@ -35,9 +35,12 @@ use Util;
 no if $PERL_VERSION >= 5.017011, 
     warnings => 'experimental::smartmatch';
 
+# Our entropy files will be 20 MB each
+use constant FILE_SIZE => 20 * 1024 * 1024;
+
 my @valid_percentages = 
     qw( 0 1 2 3 4 5 6 7 8 9 10 20 30 40 50 60 70 80 90 100 );
-    
+   
 sub get_valid_percentages()
 {
     return @valid_percentages;
@@ -61,9 +64,8 @@ sub get_filename($)
 sub create_entropy_files()
 {
     use constant BLOCK_SIZE => 4096;
-    my $output_file_size = 20 * 1024 * 1024;
 
-    my $num_blocks = $output_file_size / BLOCK_SIZE; 
+    my $num_blocks = FILE_SIZE / BLOCK_SIZE; 
 
     # paranoia: we want to make the same files every time
     srand( 42 );

@@ -30,6 +30,7 @@ use strict;
 use warnings;
 use Moose;
 use Util;
+use Compressibility;
 
 with 'IOGenerator';
 
@@ -60,12 +61,25 @@ has 'output_dir' => (
     isa      => 'Str',
 );
 
+has 'default_comp' => (
+    is      => 'ro',
+    isa     => 'Int',
+    default => 0
+);
+
 my $affinity_string;
 
 if( hyperthreading_enabled() )
 {
-    # Use only the physical processors (every other logical processor)
-    $affinity_string = '0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30';
+    my @all_cores = ( 0 .. num_physical_cores() - 1 );
+
+    # Prefer even-numbered (physical) cores...
+    my @physical_cores = grep { $_ % 2 == 0 } @all_cores;
+
+    # ...but use odd-numbered (logical) if we must
+    my @logical_cores = grep { $_ % 2 } @all_cores;
+
+    $affinity_string = join ',', ( @physical_cores, @logical_cores ); 
 }
 else
 {
@@ -84,10 +98,8 @@ sub run($$)
     my $block_size       = $test_ref->{'block_size'};
     my $queue_depth      = $test_ref->{'queue_depth'};
     my $run_time         = $test_ref->{'run_time'};
+    my $compressibility  = $test_ref->{'compressibility'};
   
-    die "DiskSpd doesn't support variable entropy.\n"
-        if defined $test_ref->{'compressibility'};
-
     if( $run_type eq 'warmup' )
     {
         $run_time = $test_ref->{'warmup_time'};
@@ -119,6 +131,17 @@ sub run($$)
     $cmd .= "-L ";
     $cmd .= "-d$run_time ";
    
+    # Use default unless compressibility is specified by the test
+    my $entropy_file = 
+        Compressibility::get_filename( 
+            $compressibility // $self->default_comp
+        );
+    
+    my $entropy_file_size_MB = 
+        int Compressibility::FILE_SIZE / 1024 / 1024;
+
+    $cmd .= "-Z$entropy_file_size_MB" . qq(M,"$entropy_file" );
+
     if( $self->raw_disk )
     {
         $cmd .= "#" . $self->pdnum;
@@ -147,7 +170,7 @@ sub run($$)
 
     close( $OUT );
 
-    die "DiskSpd returned non-zero errorlevel" if $errorlevel;
+    print STDERR "\n\tDiskSpd returned non-zero errorlevel" if $errorlevel;
 }
 
 sub parse_cmd_line($$)
@@ -192,8 +215,18 @@ sub parse_cmd_line($$)
     
     $stats_ref->{'QD'} = $ios_per_thread * $num_threads;
        
-    # DiskSpd doesn't currently support variable entropy
-    $stats_ref->{'Compressibility'} = 0;
+    if( $cmd_line =~ /-Z.*?([^\\]*)\.bin/ )
+    {
+        my $file_name = $1;
+    
+        $file_name =~ /(\d+)/;
+
+        $stats_ref->{'Compressibility'} = $1;
+    }
+    else
+    {
+        $stats_ref->{'Compressibility'} = 0;
+    }
 }
 
 my $pct_table_pat = qr/\|\s+(.+)\s+\|\s+(.+)\s+\|\s+(.+)\s+/;

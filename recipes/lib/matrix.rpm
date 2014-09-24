@@ -58,14 +58,6 @@ sub do_matrix
                         "$block_size-$access_pattern-" .
                         "QD$queue_depth";
 
-                    precondition( 
-                        name_string         => $name_string, 
-                        write_percentage    => $write_percentage,
-                        access_pattern      => $access_pattern,
-                        block_size          => $block_size,
-                        queue_depth         => $queue_depth,
-                    );
-
                     test( 
                         name_string         => $name_string, 
                         write_percentage    => $write_percentage,

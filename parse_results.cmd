@@ -4,7 +4,7 @@
 @echo off
 setlocal
 set PATH=%~dp0\perl\bin;%~dp0\bin;%PATH%
-perl -w %~f0 %*
+perl -w "%~f0" %*
 exit /B %ERRORLEVEL%
 ';
 
@@ -169,31 +169,34 @@ sub compute_rw_amounts($)
     my $total_IOs = $stats_ref->{'IOs Total'};
     my $total_GB = $total_IOs * $stats_ref->{'Access Size'} / KB_PER_GB;
     $stats_ref->{'GB Total'} = $total_GB;
+    
+    my $read_frac = $stats_ref->{'R Mix'} / 100;
+    my $write_frac = $stats_ref->{'W Mix'} / 100;
 
     # The following are *estimates* (not measured)
     # If the workload generator measures this directly, do not overwrite
 
     unless( exists $stats_ref->{'IOs Read'} )
     {
-        $stats_ref->{'IOs Read'}  = $total_IOs * $stats_ref->{'R Mix'};
+        $stats_ref->{'IOs Read'}  = $total_IOs * $read_frac; 
         $stats_ref->{'Notes'} .= "IOs Read is an estimate; ";
     }
 
     unless( exists $stats_ref->{'IOs Write'} )
     {
-        $stats_ref->{'IOs Write'} = $total_IOs * $stats_ref->{'W Mix'};
+        $stats_ref->{'IOs Write'} = $total_IOs * $write_frac; 
         $stats_ref->{'Notes'} .= "IOs Write is an estimate; ";
     }
 
     unless( exists $stats_ref->{'GB Read'} )
     {
-        $stats_ref->{'GB Read'}  = $total_GB * $stats_ref->{'R Mix'};
+        $stats_ref->{'GB Read'}  = $total_GB * $read_frac; 
         $stats_ref->{'Notes'} .= "GB Read is an estimate; ";
     }
 
     unless( exists $stats_ref->{'GB Write'} )
     {
-        $stats_ref->{'GB Write'} = $total_GB * $stats_ref->{'W Mix'};
+        $stats_ref->{'GB Write'} = $total_GB * $write_frac; 
         $stats_ref->{'Notes'} .= "GB Write is an estimate; ";
     }
 }

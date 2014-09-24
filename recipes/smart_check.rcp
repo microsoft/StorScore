@@ -30,14 +30,6 @@ sub do_workload($)
 {
     my $name_string = shift;
 
-    precondition(
-        name_string         => $name_string, 
-        write_percentage    => 0, 
-        access_pattern      => 'random',
-        block_size          => '8K',
-        queue_depth         => 32
-    );
-
     test(
         name_string         => $name_string, 
         write_percentage    => 0, 
