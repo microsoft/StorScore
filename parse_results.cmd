@@ -76,6 +76,7 @@ use DeviceDB;
 use Util;
 use Sqlio;
 use DiskSpd;
+use PreconditionParser;
 use LogmanParser;
 use Power;
 use SmartCtlParser;
@@ -125,6 +126,24 @@ EXAMPLES
   $script_name input_dir1 input_dir2 report
 
 END_USAGE
+}
+
+sub parse_warmup_file($$)
+{
+    my $file_name = shift;
+    my $stats_ref = shift;
+        
+    return 0 unless -e $file_name;
+
+    my %warmup_stats;
+
+    parse_test_file( $file_name, \%warmup_stats );
+
+    # Inject into the main stats hash with "Warmup" prefix
+    foreach my $key ( keys %warmup_stats )
+    {
+        $stats_ref->{"Warmup $key"} = $warmup_stats{$key};
+    }
 }
 
 sub parse_test_file($$)
@@ -201,28 +220,51 @@ sub compute_rw_amounts($)
     }
 }
 
+sub compute_steady_state_error_and_warn($)
+{
+    my $stats_ref = shift;
+
+    my $warmup_IOPS = $stats_ref->{'Warmup IOPS Total'};
+    my $test_IOPS = $stats_ref->{'IOPS Total'};
+ 
+    return unless defined $warmup_IOPS;
+
+    my $abs_diff = abs( $warmup_IOPS - $test_IOPS );
+    my $max_abs = max( abs( $warmup_IOPS ), abs( $test_IOPS ) );
+
+    return unless $max_abs > 0;
+
+    my $rel_diff = $abs_diff / $max_abs * 100; 
+
+    # Complain if the relative difference is greater than 5%
+    unless( $rel_diff <= 5 )
+    {
+        my $test_name = $stats_ref->{'Test Name'};
+        warn "\tPrecondition didn't achieve steady-state? $test_name\n";
+
+        $stats_ref->{'Notes'} .= "No steady-state?; ";
+    }
+
+    $stats_ref->{'Steady-State Error'} = $rel_diff;
+}
+
 sub get_timestamp_from_smart_file($)
 {
     my $file_name = shift;
     
-    my $timestamp;
-
     open my $LOG, "<$file_name" or 
         die "Error opening $file_name\n";
 
+    my $timestamp;
+
     while( my $line = <$LOG> )
     {
-        if( $line =~ /Local Time is/ )
-        {
             chomp $line;
 
-            # truncate string to remove timezone
-            $line = substr( $line, 0, -4 );
-
-            $line =~ /Local Time is:\s+(.+)/;
-
-            $timestamp = 
-                Time::Piece->strptime( $1, '%a %b %d %H:%M:%S %Y' );
+        if( $line =~ /Local Time is:\s+(.+)/ )
+        {
+            # truncate to remove timezone
+            $timestamp = substr( $1, 0, -4 );
 
             last;
         }
@@ -254,16 +296,26 @@ sub generate_timestamp($$)
         $timestamp = get_file_modified_time( "test-$base_name.txt" ); 
     }
 
-    $stats_ref->{'Timestamp'} = $timestamp;
+    $stats_ref->{'Timestamp'} =
+        Time::Piece->strptime( $timestamp, '%a %b %d %H:%M:%S %Y' );
 }
 
 my @cols = 
 (
     { name => 'Display Name'},
-    { name => 'User Capacity' },
-    { name => 'Partition Size' },
+    { name => 'User Capacity (GB)' },
+    { name => 'Partition Size (GB)' },
     { name => 'Test Name' },
-    { name => 'Timestamp', },
+    {
+        name   => 'Timestamp',
+        format => 'mm/dd/yyyy HH:mm:ss',
+    },
+    { name => 'Test Ordinal' },
+    { name => 'Steady-State Time' },
+    {
+        name   => 'Steady-State Error',
+        format => '0%',
+    },
     {
         name   => 'R Mix',
         format => '0%',
@@ -465,11 +517,35 @@ push @cols,
 ) 
 unless $sanitize;
 
+sub generate_probable_partition_size($)
+{
+    my $stats_ref = shift;
+
+    # In the old code we never captured the partition size, but
+    # it was usually equal to the user capacity.  We make that
+    # assumption here.
+    $stats_ref->{'Partition Size (GB)'} =
+        $stats_ref->{'User Capacity (GB)'}
+            unless defined $stats_ref->{'Partition Size (GB)'};
+
+    $stats_ref->{'Partition Size (B)'} =
+        $stats_ref->{'User Capacity (B)'}
+            unless defined $stats_ref->{'Partition Size (B)'};
+}
+
+sub by_timestamp($$)
+{
+    my $a = shift;
+    my $b = shift;
+
+    return $a->{'Timestamp'} <=> $b->{'Timestamp'};
+}
+
 sub parse_directories(@)
 {
     my @input_dirs = @_;
 
-    my @all_stats;
+    my @all_devices;
 
     my $directory_number = 0;
 
@@ -499,18 +575,17 @@ sub parse_directories(@)
             $wmic->parse( \%dir_stats, 'wmic.txt' );
         }
 
-        # In the old code we never captured the partition size, but
-        # it was usually equal to the user capacity.  We make that
-        # assumption here.
-        $dir_stats{'Partition Size'} = $dir_stats{'User Capacity'}
-            unless defined $dir_stats{'Partition Size'};
+        generate_probable_partition_size( \%dir_stats );
 
         $dir_stats{'Directory'} = "external:$dir";
         $dir_stats{'Unique Device ID'} = $directory_number;
          
+        my $try_precondition = 1;
         my $try_smart_attr = 1;
         my $try_logman = 1;
         my $try_power = 1;
+
+        my @current_device;
 
         foreach my $test_file_name ( glob( $data_file_glob ) )
         {
@@ -526,13 +601,31 @@ sub parse_directories(@)
 
             generate_timestamp( $base_name, \%file_stats );
     
+            parse_warmup_file(
+                "warmup-$base_name.txt",
+                \%file_stats
+            );
+
             parse_test_file(
                 $test_file_name,
                 \%file_stats
             );
 
             compute_rw_amounts( \%file_stats );
-    
+  
+            compute_steady_state_error_and_warn( \%file_stats );
+
+            if( $try_precondition )
+            {
+                my $pc = PreconditionParser->new();
+
+                $pc->parse(
+                    "precondition-$base_name.txt",
+                    \%file_stats
+                )
+                or $try_precondition = 0;
+            }
+
             if( $try_smart_attr )
             {
                 my $smartctl = SmartCtlParser->new();
@@ -584,13 +677,21 @@ sub parse_directories(@)
                 $power->parse( \%file_stats ) or $try_power = 0;
             }
 
-            push @all_stats, \%file_stats;
+            push @current_device, \%file_stats;
+        }
+
+        my $ordinal = 0;
+
+        foreach my $stats_ref ( sort by_timestamp @current_device )
+        {
+            $stats_ref->{'Test Ordinal'} = $ordinal++;
+            push @all_devices, $stats_ref;
         }
 
         $directory_number++;
     }
         
-    return @all_stats;
+    return @all_devices;
 }
 
 # When extracting, we store a statistic's value directly in a hash.
@@ -731,6 +832,7 @@ sub try_suffix_column
     
     my $name = $args{'name'} // die;
     my $all_stats_ref = $args{'all_stats_ref'} // die;
+    my $is_percentage = $args{'is_percentage'} // 0;
     
     my @all_stats = @{ $all_stats_ref };
 
@@ -755,6 +857,8 @@ sub try_suffix_column
         {
             my $val = $stats_ref->{$name};
        
+            $val .= '%' if $is_percentage;
+            
             $stats_ref->{'Display Name'} .= " - $val"
         }
     }
@@ -823,6 +927,7 @@ sub build_display_names(@)
     # If that wasn't enough, try suffixing the test's default compressibility
     try_suffix_column(
         name => 'Default Compressibility',
+        is_percentage => 1,
         all_stats_ref => \@all_stats
     );
 
@@ -1192,6 +1297,12 @@ sub generate_raw_data_sheet($\@)
                 $value = protect_excel_string( $value );
             }
 
+            # Convert Time::Piece object to Excel date format
+            if( ref $value eq 'Time::Piece' )
+            {
+                $value = unix_date_to_excel_date( $value->epoch )
+            }
+
             my $format_obj;
 
             if( defined $format_str )
@@ -1203,6 +1314,7 @@ sub generate_raw_data_sheet($\@)
            
                 # Our percentages are 0 to 100. Excel prefers 0.0 to 1.0.
                 $value /= 100 if defined $value and $format_str =~ /%/;
+
             }
 
             $raw_sheet->write( $row_num, $col_num, $value, $format_obj );

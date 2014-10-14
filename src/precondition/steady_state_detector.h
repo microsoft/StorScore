@@ -225,15 +225,18 @@ class SteadyStateDetector
 
     const size_t NUM_BINS;
     const int64_t QPC_TICKS_PER_BIN;
-   
-    // Each bin tracks 1/100th of a second
-    static const int BINS_PER_SECOND = 100;
+  
+    // N.B: this directly effects the frequency, and 
+    // thus the CPU overhead, of the linear-regression.
+    static const int BINS_PER_SECOND = 10;  // Each bin = 1/10th second
 
     circular_buffer<int> data_;
 
     // Constants for linear regression
     const double SUM_X;
     const double SUM_SQ_X;
+    const double VAR_X;
+    const double STD_DEV_X;
 
     public:
 
@@ -243,7 +246,7 @@ class SteadyStateDetector
             double slope_toler = DEFAULT_SLOPE_TOLERANCE )
         : numValidBins_( 0 )
         , possibleSteadyState_( false )
-        , changed_( true )
+        , changed_( false )
         , GATHER_SECONDS( gather_sec )
         , DWELL_SECONDS( dwell_sec )
         , SLOPE_TOLERANCE( slope_toler )
@@ -261,6 +264,8 @@ class SteadyStateDetector
                     boost::counting_iterator<int>( NUM_BINS ),
                     boost::counting_iterator<int>( 1 ),
                     0.0 ) )
+        , VAR_X( SUM_SQ_X - ( ( SUM_X * SUM_X ) / ( NUM_BINS - 1 ) ) )
+        , STD_DEV_X( std::sqrt( VAR_X ) )
     {
         if( GATHER_SECONDS == 0 )
         {
@@ -272,8 +277,6 @@ class SteadyStateDetector
     {
         int64_t now = qpc(); 
     
-        changed_ = true;
-
         if( numValidBins_ == 0 )
         {
             // Initialize on 1st call
@@ -284,6 +287,7 @@ class SteadyStateDetector
         while( now >= nextBinStartTime_ )
         {
             data_.advance();
+            changed_ = true;
 
             data_.current() = 0;
        
@@ -297,8 +301,14 @@ class SteadyStateDetector
         
         if( full() )
         {
-            double slope = getSlope();
+            double slope;
+            double rSquared;
 
+            std::tie( slope, rSquared ) = getLinearFit();
+
+            // ISSUE_REVIEW: should we also have an R^2 tolerance?
+            // An R^2 close to 1.0 indicates a good fit, but ours
+            // are often terrible... 0.01 or worse.
             if( abs( slope ) <= SLOPE_TOLERANCE )
             {
                 if( possibleSteadyState_ == false )
@@ -345,8 +355,11 @@ class SteadyStateDetector
            
             dwellPercent = std::min( dwellPercent, 100.0 );
 
-            double slope = getSlope();
-                
+            double slope;
+            double rSquared;
+
+            std::tie( slope, rSquared ) = getLinearFit();
+
             std::ostringstream msg;
             
             msg << "dwelling "
@@ -354,21 +367,28 @@ class SteadyStateDetector
                 << std::setprecision( 1 )
                 << dwellPercent
                 << "%, slope "
-                << std::setprecision( 6 )
+                << std::setprecision( 4 )
                 << slope;
+                //<< ", R^2 "
+                //<< rSquared;
 
             return msg.str();
         }
         else
         {
-            double slope = getSlope();
+            double slope;
+            double rSquared;
+
+            std::tie( slope, rSquared ) = getLinearFit();
 
             std::ostringstream msg;
                 
             msg << "awaiting steady-state, slope "
                 << std::setiosflags( std::ios::fixed )
-                << std::setprecision( 6 )
+                << std::setprecision( 4 )
                 << slope;
+                //<< ", R^2 "
+                //<< rSquared;
             
             return msg.str();
         }
@@ -399,8 +419,12 @@ class SteadyStateDetector
 
         return true;
     }
-    
-    double getSlope() const
+   
+    // N.B. 
+    // It's critical that we perform this linear regression without
+    // becoming CPU-limited.  We need to remain IO bound so we are
+    // actually measuring the storage device. --MarkSan
+    std::tuple<double, double> getLinearFit() const
     {
         if( !full() )
         {
@@ -408,12 +432,13 @@ class SteadyStateDetector
         }
 
         static double currentSlope = 0;
+        static double currentRSquared = 0;
 
         if( !changed_ )
         {
-            return currentSlope;
+            return std::make_pair( currentSlope, currentRSquared );
         }
-    
+
         const double sum_y =
             std::accumulate( data_.begin(), data_.end(), 0.0 );
         
@@ -424,20 +449,37 @@ class SteadyStateDetector
                 data_.begin(),
                 0.0
             );
-      
-        const double numer = 
-            ( ( NUM_BINS - 1 ) * sum_xy ) - ( SUM_X * sum_y );
-
-        const double denom =
-            ( ( NUM_BINS - 1 ) * SUM_SQ_X ) - ( SUM_X * SUM_X );
+     
+        const double covar_xy = 
+            sum_xy - ( ( SUM_X * sum_y ) / ( NUM_BINS - 1 ) );
         
-        currentSlope = numer / denom;
-        changed_ = false;
+        const double sum_sq_y =
+            std::inner_product(
+                data_.begin(),
+                data_.end(),
+                data_.begin(),
+                0.0
+            );
 
-        return currentSlope;
+        const double var_y =
+            sum_sq_y - ( ( sum_y * sum_y ) / ( NUM_BINS - 1 ) );
+
+        const double std_dev_y = std::sqrt( var_y );
+
+        const double corr = covar_xy / ( STD_DEV_X * std_dev_y );
+        
+        currentSlope = covar_xy / VAR_X;
+        currentRSquared = corr * corr;
+        
+        //double currentIntercept =
+        //    ( sum_y - currentSlope * SUM_X ) / NUM_BINS - 1;
+
+        changed_ = false;
+        
+        return std::make_pair( currentSlope, currentRSquared );
     }
 };
 
-const double SteadyStateDetector::DEFAULT_SLOPE_TOLERANCE = 0.000001; 
+const double SteadyStateDetector::DEFAULT_SLOPE_TOLERANCE = 0.001; 
 
 #endif // __STEADY_STATE_DETECTOR_H_

@@ -41,12 +41,12 @@ $device_db{'KINGSTON SE100S3400G'} =
     'Host Writes'   =>
     {
         'Attribute'       => 234,
-        'Unit'            => BYTES_PER_GB,
+        'Unit'            => BYTES_PER_GB_BASE2,
     },
     'Controller Writes' =>
     {
         'Attribute' => 233,
-        'Unit'      => BYTES_PER_GB,
+        'Unit'      => BYTES_PER_GB_BASE2,
     }
 };
 
@@ -57,12 +57,12 @@ $device_db{'KINGSTON SE50S3480G'} =
     'Host Writes'   =>
     {
         'Attribute' => 234,
-        'Unit'      => BYTES_PER_GB,
+        'Unit'      => BYTES_PER_GB_BASE2,
     },
     'Controller Writes' =>
     {
         'Attribute' => 233,
-        'Unit'      => BYTES_PER_GB,
+        'Unit'      => BYTES_PER_GB_BASE2,
     }
 };
 
@@ -73,12 +73,12 @@ $device_db{'KINGSTON SKC300S37A480G'} =
     'Host Writes'   =>
     {
         'Attribute' => 234,
-        'Unit'      => BYTES_PER_GB,
+        'Unit'      => BYTES_PER_GB_BASE2,
     },
     'Controller Writes' =>
     {
         'Attribute' => 233,
-        'Unit'      => BYTES_PER_GB,
+        'Unit'      => BYTES_PER_GB_BASE2,
     }
 };
 
@@ -89,12 +89,12 @@ $device_db{'KINGSTON SE75S3480G'} =
     'Host Writes'   =>
     {
         'Attribute'       => 234,
-        'Unit'            => BYTES_PER_GB,
+        'Unit'            => BYTES_PER_GB_BASE2,
     },
     'Controller Writes' =>
     {
         'Attribute' => 233,
-        'Unit'      => BYTES_PER_GB,
+        'Unit'      => BYTES_PER_GB_BASE2,
     }
 };
 
@@ -105,12 +105,12 @@ $device_db{'KINGSTON MSSC401S37480GE'} =
     'Host Writes'   =>
     {
         'Attribute' => 234,
-        'Unit'      => BYTES_PER_GB,
+        'Unit'      => BYTES_PER_GB_BASE2,
     },
     'Controller Writes' =>
     {
         'Attribute' => 233,
-        'Unit'      => BYTES_PER_GB,
+        'Unit'      => BYTES_PER_GB_BASE2,
     }
 };
 

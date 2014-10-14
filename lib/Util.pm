@@ -51,9 +51,12 @@ use vars qw(@ISA @EXPORT);
 
 @ISA = qw(Exporter);
 @EXPORT = qw(
-    BYTES_PER_GB
-    BYTES_PER_MB
-    BYTES_PER_KB
+    BYTES_PER_GB_BASE2
+    BYTES_PER_MB_BASE2
+    BYTES_PER_KB_BASE2
+    BYTES_PER_GB_BASE10
+    BYTES_PER_MB_BASE10
+    BYTES_PER_KB_BASE10
     BYTES_PER_SECTOR
     BYTES_IN_2MB
     $version
@@ -119,11 +122,17 @@ use vars qw(@ISA @EXPORT);
     get_file_modified_time
     log_base2
     round_up_power2
+    unix_date_to_excel_date
 );
 
-use constant BYTES_PER_GB => 1024 * 1024 * 1024;
-use constant BYTES_PER_MB => 1024 * 1024;
-use constant BYTES_PER_KB => 1024;
+use constant BYTES_PER_GB_BASE2 => 1024 * 1024 * 1024;
+use constant BYTES_PER_MB_BASE2 => 1024 * 1024;
+use constant BYTES_PER_KB_BASE2 => 1024;
+
+use constant BYTES_PER_GB_BASE10 => 1000 * 1000 * 1000;
+use constant BYTES_PER_MB_BASE10 => 1000 * 1000;
+use constant BYTES_PER_KB_BASE10 => 1000;
+
 use constant BYTES_PER_SECTOR => 512;
 use constant BYTES_IN_2MB => 1024 * 1024 * 2;
 
@@ -998,6 +1007,21 @@ sub round_up_power2($)
     my $val = shift;
 
     return 2 ** ceil( log_base2( $val ) );
+}
+
+sub unix_date_to_excel_date($)
+{
+    my $unix_date = shift;
+    
+    # Input: integer seconds since the Unix epoch, 1/1/1970
+    # Output: floating-point days since the Excel epoch, 1/1/1900
+    
+    # Number of days between 1/1/1970 and 1/1/1900
+    use constant EPOCH_SHIFT_DAYS => 25569;
+
+    use constant SECONDS_PER_DAY => 86400;
+
+    return ( $unix_date / SECONDS_PER_DAY ) + EPOCH_SHIFT_DAYS;
 }
 
 1;

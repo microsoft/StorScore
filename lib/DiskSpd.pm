@@ -129,6 +129,7 @@ sub run($$)
     $cmd .= "-o$ios_per_thread ";
     $cmd .= "-a$affinity_string " if defined $affinity_string;
     $cmd .= "-L ";
+    $cmd .= "-h "; # match SQLIO2 default: no buffering, write-through
     $cmd .= "-d$run_time ";
    
     # Use default unless compressibility is specified by the test

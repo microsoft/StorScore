@@ -38,6 +38,7 @@ struct Parameters
     AccessPattern accessPattern;
     int outstandingIOs;
     int writePercentage;
+    int numPasses;
     bool runUntilSteadyState;
     int steadyStateGatherSec;
     int steadyStateDwellSec;
@@ -52,6 +53,7 @@ struct Parameters
         , accessPattern( DEFAULT_ACCESS_PATTERN )
         , outstandingIOs( DEFAULT_OUTSTANDING_IOS )
         , writePercentage( DEFAULT_WRITE_PERCENTAGE )
+        , numPasses( DEFAULT_NUM_PASSES )
         , runUntilSteadyState( false )
         , steadyStateGatherSec( SteadyStateDetector::DEFAULT_GATHER_SECONDS )
         , steadyStateDwellSec( SteadyStateDetector::DEFAULT_DWELL_SECONDS )
@@ -84,6 +86,8 @@ void printUsage( int argc, char *argv[] )
             << DEFAULT_OUTSTANDING_IOS << ")\n"
         << "  -wX\tGenerate IOs such that X% are writes (default: "
             << DEFAULT_WRITE_PERCENTAGE << "%)\n"
+        << "  -nX\tRun until X number of passes are complete (default: "
+            << DEFAULT_NUM_PASSES << ")\n"
         << "  -ss\tRun until steady-state is achieved\n"
         << "  -gX\tGather IOPS for X seconds for steady-state (default: "
             << SteadyStateDetector::DEFAULT_GATHER_SECONDS << ")\n"
@@ -107,6 +111,7 @@ void parseCmdline( int argc, char *argv[] )
     bool gatherSeen = false;
     bool dwellSeen = false;
     bool tolerSeen = false;
+    bool numPassesSeen = false;
 
     for( auto &arg : args )
     {
@@ -164,6 +169,13 @@ void parseCmdline( int argc, char *argv[] )
 
                     case 'p':
                         params.progressPrefix = arg.substr( 2 );
+                        break;
+                    
+                    case 'n':
+                        params.numPasses
+                            = stoi( arg.substr( 2 ) );
+
+                        numPassesSeen = true;
                         break;
 
                     default:
@@ -247,13 +259,13 @@ void parseCmdline( int argc, char *argv[] )
 
     if( params.steadyStateGatherSec <= 0 ) 
     {
-        cerr << "Error: -ssg must be > 0\n";
+        cerr << "Error: -g must be > 0\n";
         exit( EXIT_FAILURE ); 
     }
     
     if( params.steadyStateDwellSec <= 0 ) 
     {
-        cerr << "Error: -ssd must be > 0\n";
+        cerr << "Error: -d must be > 0\n";
         exit( EXIT_FAILURE ); 
     }
     
@@ -261,6 +273,18 @@ void parseCmdline( int argc, char *argv[] )
             !params.runUntilSteadyState)
     {
         cerr << "Error: -g, -d, and -t require -ss\n";
+        exit( EXIT_FAILURE ); 
+    }
+    
+    if( params.runUntilSteadyState && numPassesSeen )
+    {
+        cerr << "Error: -n conflicts with -ss\n";
+        exit( EXIT_FAILURE ); 
+    }
+
+    if( params.numPasses < 1 ) 
+    {
+        cerr << "Error: -n must be >= 1\n";
         exit( EXIT_FAILURE ); 
     }
 }
@@ -389,6 +413,7 @@ class IOGenerator
 
     HANDLE targetHandle_;
     int64_t targetSize_;
+    int numPasses_;
 
     int64_t completedBytes_;
     int postedIOs_;
@@ -397,11 +422,13 @@ class IOGenerator
     
     bool steadyStateAchieved_;
     bool steadyStateAbandonedTime_;
+    bool steadyStateAbandonedIOs_;
     
     array< OVERLAPPED, MAX_OUTSTANDING_IOS > overlapped_;
 
     const int TOTAL_BLOCKS;
     
+    const int MAX_STEADY_STATE_IOS;
     static const int MAX_STEADY_STATE_WAIT_HOURS = 6;
    
     int64_t qpcStart_;
@@ -414,16 +441,20 @@ class IOGenerator
 
     IOGenerator( 
             HANDLE targetHandle,
-            int64_t targetSize )
+            int64_t targetSize,
+            int numPasses )
         : targetHandle_( targetHandle )
         , targetSize_( targetSize )
+        , numPasses_( numPasses )
         , completedBytes_( 0 )
         , postedIOs_( 0 )
         , completedIOs_( 0 )
         , inFlight_( 0 )
         , steadyStateAchieved_( false )
         , steadyStateAbandonedTime_( false )
+        , steadyStateAbandonedIOs_( false )
         , TOTAL_BLOCKS( divRoundUp( targetSize, params.blockSize ) )
+        , MAX_STEADY_STATE_IOS( 2 * TOTAL_BLOCKS ) // ~2 overwrites
         , qpcStart_( qpc() )
         , steadyStateDetector_(
                 params.steadyStateGatherSec,
@@ -492,8 +523,8 @@ class IOGenerator
         if( !params.runUntilSteadyState &&
                 ( params.accessPattern == SEQUENTIAL ) )
         {
-            assert( completedIOs_ == TOTAL_BLOCKS );
-            assert( completedBytes_ == targetSize_ );
+            assert( completedIOs_ == TOTAL_BLOCKS * numPasses_ );
+            assert( completedBytes_ == targetSize_ * numPasses_ );
         }
     }
 
@@ -501,7 +532,9 @@ class IOGenerator
     {
         if( params.runUntilSteadyState )
         {
-            if( steadyStateAchieved_ || steadyStateAbandonedTime_ )
+            if( steadyStateAchieved_ ||
+                steadyStateAbandonedTime_ ||
+                steadyStateAbandonedIOs_ )
             {
                 return false;
             }
@@ -511,7 +544,7 @@ class IOGenerator
             }
         }
         
-        if( postedIOs_ < TOTAL_BLOCKS )
+        if( postedIOs_ < TOTAL_BLOCKS * numPasses_ )
         {
             return true;
         }
@@ -631,35 +664,11 @@ class IOGenerator
         postedIOs_++;
     }
 
-    void postNextIO( OVERLAPPED *op )
-    {
-        // Convert overlapped pointer to index
-        int idx = op - &overlapped_[0];
-        postNextIO( idx );
-    }
-
-    bool timeToUpdateProgressMessage() const
-    {
-        int64_t now = qpc();
-        static int64_t lastUpdate = 0;
-
-        // Limit console updates to once a second
-        bool timeForAnotherUpdate = 
-            now > ( lastUpdate + QPC_TICKS_PER_SEC ); 
-
-        if( timeForAnotherUpdate )
-        {
-            lastUpdate = now;
-            return true;
-        }
-
-        return false;
-    }
-
     void handleCompletionTotalIOs()
     {
         double percentCompleted = 
-            static_cast<double>( completedBytes_ ) / targetSize_ * 100;
+            ( static_cast<double>( completedBytes_ ) /
+            ( targetSize_ * numPasses_ ) ) * 100;
 
         ostringstream msg;
         
@@ -685,21 +694,28 @@ class IOGenerator
 
     string getSteadyStateReasonString() const
     {
-        assert( steadyStateAchieved_ || steadyStateAbandonedTime_ );
+        assert( steadyStateAchieved_ ||
+                steadyStateAbandonedTime_ ||
+                steadyStateAbandonedIOs_ );
         
         ostringstream msg;
         
-        int minutesElapsed = secondsSince( qpcStart_ ) / 60;
+        int secondsElapsed = secondsSince( qpcStart_ );
         
         if( steadyStateAchieved_ )
         {
             msg << "achieved steady-state after "
-                << minutesElapsed << " minutes";
+                << secondsElapsed << " seconds";
         }
         else if( steadyStateAbandonedTime_ )
         {
             msg << "abandoned steady-state after "
-                << minutesElapsed << " minutes";
+                << secondsElapsed << " seconds";
+        }
+        else if( steadyStateAbandonedIOs_ )
+        {
+            msg << "abandoned steady-state after "
+                << MAX_STEADY_STATE_IOS << " IOs";
         }
 
         return msg.str();
@@ -727,7 +743,13 @@ class IOGenerator
             steadyStateAbandonedTime_ = true;
             done = true;
         }
-            
+  
+        if( completedIOs_ >= MAX_STEADY_STATE_IOS )
+        {
+            steadyStateAbandonedIOs_ = true;
+            done = true;
+        }
+
         if( steadyStateDetector_.done() )
         {
             steadyStateAchieved_ = true;
@@ -749,13 +771,27 @@ class IOGenerator
         }
     }
 
-    void handleCompletion( int bytes )
+    void handleCompletion( int bytes, OVERLAPPED *op )
     {
+        // First priority: post the next IO
+        // Second priority: track stats for the just-completed IO
+        //
+        // The idea is to come as close as possible to attaining
+        // the requested queue depth.
+        
         inFlight_--;
 
         completedIOs_++;
         completedBytes_ += bytes;
- 
+
+        if( shouldPostAnotherIO() )
+        {
+            // Convert overlapped pointer to index
+            int idx = op - &overlapped_[0];
+
+            postNextIO( idx );
+        }
+
         throughputMeter_.trackCompletion( bytes );
 
         if( params.runUntilSteadyState )
@@ -790,13 +826,8 @@ void CALLBACK ioCompletionRoutine(
         reinterpret_cast<IOGenerator*>( overlapped->hEvent );
 
     assert( ioGen != NULL );
-                
-    ioGen->handleCompletion( bytes );
-
-    if( ioGen->shouldPostAnotherIO() )
-    {
-        ioGen->postNextIO( overlapped );
-    }
+   
+    ioGen->handleCompletion( bytes, overlapped );
 }
 
 int main( int argc, char *argv[] )
@@ -828,7 +859,7 @@ int main( int argc, char *argv[] )
     }
 
     // Do all the IOs
-    IOGenerator( targetHandle, targetSize ).run();
+    IOGenerator( targetHandle, targetSize, params.numPasses ).run();
 
     // We should never extend the target size
     const int64_t finalTargetSize = params.rawDisk ?

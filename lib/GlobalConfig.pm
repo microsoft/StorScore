@@ -233,7 +233,6 @@ END
 
     if( $quick_test )
     {
-        $initialize = 0;
         $active_range = 1;
         $test_time_override = 5;
         $warmup_time_override = 0;

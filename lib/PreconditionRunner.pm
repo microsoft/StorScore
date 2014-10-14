@@ -24,7 +24,7 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-package Precondition;
+package PreconditionRunner;
 
 use strict;
 use warnings;
@@ -60,6 +60,12 @@ has 'quick_test' => (
     default  => 0
 );
 
+has 'is_target_ssd' => (
+    is      => 'ro',
+    isa     => 'Bool',
+    default => undef
+);
+
 use constant NORMAL_GATHER_SECONDS => 540;
 use constant NORMAL_DWELL_SECONDS => 60;
 use constant NORMAL_MIN_RUN_SECONDS => 
@@ -72,31 +78,40 @@ use constant QUICK_TEST_MIN_RUN_SECONDS =>
 
 use constant QUICK_TEST_SLOPE_TOLERANCE => 0.01;
 
-sub run_sequential_passes($$)
+sub initialize()
 {
     my $self = shift;
     
-    my $prefix = shift;
-    my $num_passes = shift;
-
     my $target = $self->raw_disk ? $self->pdnum : $self->target_file;
-        
-    for( my $pass = 1; $pass <= $num_passes; ++$pass )
+      
+    my $num_passes = 1;
+    
+    if( $self->is_target_ssd and not $self->quick_test )
     {
-        my $pass_prefix = $prefix;
+        my $file_size = -s $self->target_file;
+        my $pd_size = get_drive_size( $self->pdnum );
 
-        $pass_prefix .= ", pass $pass/$num_passes" if $num_passes > 1;
-
-        my $cmd = "precondition.exe ";
-
-        $cmd .= "-Y ";
-        $cmd .= qq(-p"$pass_prefix: " );
-        $cmd .= $target;
-
-        my $failed = execute_task( $cmd );
-
-        die "Precondition returned non-zero errorlevel" if $failed;
+        # We want to dirty all of the NAND, including the OP
+        # to avoid measuring the fresh-out-of-the-box condition.
+        # 
+        # Writing the drive 2x is overkill, but we do it only once.
+        #
+        # Note that in cases where the file is much smaller than
+        # the drive, we will need to write the file many times in
+        # order to write the drive once.
+        $num_passes = int( 2 * ( $pd_size / $file_size ) );
     }
+
+    my $cmd = "precondition.exe ";
+
+    $cmd .= "-n$num_passes ";
+    $cmd .= q(-p"Initializing target: " );
+    $cmd .= "-Y ";
+    $cmd .= $target;
+
+    my $failed = execute_task( $cmd );
+
+    die "Precondition returned non-zero errorlevel" if $failed;
 }
 
 sub run_to_steady_state($)

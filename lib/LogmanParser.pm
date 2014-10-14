@@ -68,6 +68,7 @@ sub parse($$)
         return 0;
     }
 
+    # ISSUE-REVIEW: potential out-of-memory crash here on 32-bit Perl 
     foreach my $row_aref ( read_csv( $filename ) )
     {
         last if $cpu_seen and $qd_seen;

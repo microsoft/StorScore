@@ -40,12 +40,12 @@ $device_db{'Sample Model A'} =
     'Host Writes'   =>
     {
         'Attribute' => 241,
-        'Unit'      => BYTES_PER_GB,
+        'Unit'      => BYTES_PER_GB_BASE2,
     },
     'Controller Writes' =>
     {
         'Attribute' => 852,
-        'Unit'      => BYTES_PER_GB,
+        'Unit'      => BYTES_PER_GB_BASE2,
     }
 };
 
@@ -56,12 +56,12 @@ $device_db{'Sample Model B'} =
     'Host Writes'   =>
     {
         'Attribute' => 241,
-        'Unit'      => BYTES_PER_GB,
+        'Unit'      => BYTES_PER_GB_BASE2,
     },
     'Controller Writes' =>
     {
         'Attribute' => 852,
-        'Unit'      => BYTES_PER_MB,
+        'Unit'      => BYTES_PER_MB_BASE2,
         'Additive'  => 1,
     }
 };

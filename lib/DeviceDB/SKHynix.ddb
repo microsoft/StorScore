@@ -40,12 +40,12 @@ $device_db{'HFS480G32MNB-2000A'} =
     'Host Writes'   =>
     {
         'Attribute' => 241,
-        'Unit'      => BYTES_PER_GB,
+        'Unit'      => BYTES_PER_GB_BASE2,
     },
     'Controller Writes' =>
     {
         'Attribute' => 234,
-        'Unit'      => BYTES_PER_GB,
+        'Unit'      => BYTES_PER_GB_BASE2,
     }
 };
 
@@ -56,12 +56,12 @@ $device_db{'HFS480G32EEB-2400A'} =
     'Host Writes'   =>
     {
         'Attribute' => 241,
-        'Unit'      => BYTES_PER_GB,
+        'Unit'      => BYTES_PER_GB_BASE2,
     },
     'Controller Writes' =>
     {
         'Attribute' => 234,
-        'Unit'      => BYTES_PER_GB,
+        'Unit'      => BYTES_PER_GB_BASE2,
     }
 };
 

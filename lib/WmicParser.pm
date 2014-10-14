@@ -47,7 +47,7 @@ my @extract_rules_Win32_DiskDrive =
     },
     {
         match => qr/^Size=(.+)/,
-        store => 'User Capacity (Bytes)'
+        store => 'User Capacity (B)'
     },
 );
 
@@ -55,7 +55,7 @@ my @extract_rules_Win32_LogicalDisk =
 (
     {
         match => qr/^Size=(.+)/,
-        store => 'Partition Size (Bytes)'
+        store => 'Partition Size (B)'
     },
 );
 
@@ -63,17 +63,17 @@ sub post_process($)
 {
     my $stats_ref = shift;
 
-    my $user_capacity_bytes = $stats_ref->{'User Capacity (Bytes)'};
+    my $user_capacity_bytes = $stats_ref->{'User Capacity (B)'};
     
-    $stats_ref->{'User Capacity'} =
-        bytes_to_human_base10( $user_capacity_bytes );
+    $stats_ref->{'User Capacity (GB)'} =
+        int( $user_capacity_bytes / BYTES_PER_GB_BASE10 );
 
-    my $part_size_bytes = $stats_ref->{'Partition Size (Bytes)'};
+    my $part_size_bytes = $stats_ref->{'Partition Size (B)'};
 
     if( $part_size_bytes )
     {
-        $stats_ref->{'Partition Size'} =
-            bytes_to_human_base10( $part_size_bytes );
+        $stats_ref->{'Partition Size (GB)'} =
+            int( $part_size_bytes / BYTES_PER_GB_BASE10 );
     }
 }
 

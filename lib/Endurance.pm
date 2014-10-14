@@ -123,7 +123,8 @@ sub compute_file_system_waf($$)
 
     return unless exists $stats_ref->{'Host Writes'};
 
-    my $host_writes_in_GB = $stats_ref->{'Host Writes'} / BYTES_PER_GB;
+    my $host_writes_in_GB =
+        $stats_ref->{'Host Writes'} / BYTES_PER_GB_BASE2;
 
     $stats_ref->{'Filesystem Write Amplification'} = 
         $host_writes_in_GB / $stats_ref->{'GB Write'};
@@ -152,7 +153,8 @@ sub compute_total_waf($$)
 
     return unless exists $stats_ref->{'Controller Writes'};
 
-    my $ctrl_writes_in_GB = $stats_ref->{'Controller Writes'} / BYTES_PER_GB;
+    my $ctrl_writes_in_GB =
+        $stats_ref->{'Controller Writes'} / BYTES_PER_GB_BASE2;
 
     $stats_ref->{'Total Write Amplification'} = 
         $ctrl_writes_in_GB / $stats_ref->{'GB Write'};
@@ -202,14 +204,11 @@ sub compute_dwpd($$)
     else
     {
         $total_nand_bytes =
-            round_up_power2(
-                human_to_bytes( $stats_ref->{'User Capacity'} )
-            );
+            round_up_power2( $stats_ref->{'User Capacity (B)'} );
     }
    
     # Give the drive credit for OP and TRIM'd space
-    my $mapped_bytes =
-        human_to_bytes( $stats_ref->{'Partition Size'} );
+    my $mapped_bytes = $stats_ref->{'Partition Size (B)'};
 
     # Compute cycles per user-visible byte
     my $adjusted_cycles = $rated_cycles *

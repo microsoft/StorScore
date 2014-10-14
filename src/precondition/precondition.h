@@ -47,8 +47,6 @@
 #include <windows.h>
 #include <conio.h>
 
-std::mt19937 rngEngine;
-
 // ISSUE-REVIEW: can we actually sustain QD this high without multithreading?
 const int MAX_OUTSTANDING_IOS = 256; // queue depth
 
@@ -66,6 +64,7 @@ const int DEFAULT_IO_SIZE = 1024 * 1024; // 1MB
 const AccessPattern DEFAULT_ACCESS_PATTERN = SEQUENTIAL;
 const int DEFAULT_OUTSTANDING_IOS = MAX_OUTSTANDING_IOS;
 const int DEFAULT_WRITE_PERCENTAGE = 100;
+const int DEFAULT_NUM_PASSES = 1;
 
 // 2x the MAX_IO_SIZE, to enable random offsets later on
 __declspec( align( SECTOR_SIZE ) )
@@ -77,18 +76,6 @@ typedef std::array< uint8_t, MAX_IO_SIZE > ReadDataBuffer;
 __declspec( align( SECTOR_SIZE ) )
     std::array< ReadDataBuffer, MAX_OUTSTANDING_IOS >
         readDataBuffers;
-
-template<typename T>
-void randomFillBuffer( T& buffer )
-{
-    using namespace std;
-
-    uniform_int_distribution<int> uniformByteDistribution( 0, 0xFF );
-
-    auto rng = bind( uniformByteDistribution, rngEngine );
-
-    generate_n( buffer.begin(), buffer.size(), rng );
-}
 
 int64_t qpf() 
 {
@@ -109,6 +96,20 @@ int64_t qpc()
 double secondsSince( int64_t start )
 {
     return static_cast<double>( ( qpc() - start ) / QPC_TICKS_PER_SEC );
+}
+
+std::mt19937 rngEngine( qpc() );
+
+template<typename T>
+void randomFillBuffer( T& buffer )
+{
+    using namespace std;
+
+    uniform_int_distribution<int> uniformByteDistribution( 0, 0xFF );
+
+    auto rng = bind( uniformByteDistribution, rngEngine );
+
+    generate_n( buffer.begin(), buffer.size(), rng );
 }
 
 int64_t divRoundUp( int64_t dividend, int64_t divisor )
@@ -144,7 +145,9 @@ HANDLE checkedOpenTarget( std::string targetName )
         FILE_SHARE_WRITE,
         NULL,
         OPEN_EXISTING,
-        FILE_FLAG_NO_BUFFERING | FILE_FLAG_OVERLAPPED,
+        FILE_FLAG_NO_BUFFERING |
+        FILE_FLAG_WRITE_THROUGH |
+        FILE_FLAG_OVERLAPPED,
         0 );
 
     if( h == INVALID_HANDLE_VALUE )

@@ -59,7 +59,7 @@ use lib "$FindBin::Bin\\lib";
 
 use Util;
 use GlobalConfig;
-use Precondition;
+use PreconditionRunner;
 use SmartCtlRunner;
 use Recipe;
 use DiskSpd;
@@ -227,7 +227,7 @@ else
         # Reserve 1GB right off the top.
         # When we tried to use the whole drive, we saw odd errors.
         # Expectation is that test results should still be valid. 
-        my $size = $free_bytes - BYTES_PER_GB;
+        my $size = $free_bytes - BYTES_PER_GB_BASE2;
 
         # Support testing less then 100% of the disk
         $size = int( $size * $gc{'active_range'} / 100 );
@@ -304,21 +304,18 @@ if( $gc{'collect_power'} )
     }
 }
 
-my $pc = Precondition->new(
+my $pc = PreconditionRunner->new(
     raw_disk        => $gc{'raw_disk'},
     pdnum           => $gc{'target_physicaldrive'},
     target_file     => $gc{'target_file'},
     output_dir      => $gc{'output_dir'},
-    quick_test      => $gc{'quick_test'}
+    quick_test      => $gc{'quick_test'},
+    is_target_ssd   => $gc{'is_target_ssd'}
 );
 
 if( $gc{'initialize'} )
 {
-    # Write SSDs 2x, touch all the OP
-    $pc->run_sequential_passes( 
-        "Initializing target",
-        $gc{'is_target_ssd'} ? 2 : 1
-    );
+    $pc->initialize();
 }
 else
 {

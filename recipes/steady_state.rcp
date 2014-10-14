@@ -26,15 +26,32 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-require 'matrix.rpm';
+test(
+    name_string         => 'Initialize to large block sequential', 
+    write_percentage    => 100, 
+    access_pattern      => 'sequential',
+    block_size          => '1M',
+    queue_depth         => 32,
+    warmup_time         => 0,
+    run_time            => 3600,
+); 
 
-do_matrix(
-    access_patterns     => [qw( sequential random )],
-    write_percentages   => [qw( 100 30 0 )],
-    block_sizes         => [qw( 2M 1M 512K 64K 16K 8K 4K 1K )],
-    queue_depths        => [qw( 256 64 16 4 1 )],
-    warmup_time         => 300,
-    run_time            => 3600
-);
+test(
+    name_string         => 'Transition to small block random', 
+    write_percentage    => 100, 
+    access_pattern      => 'random',
+    block_size          => '4K',
+    queue_depth         => 1,
+    warmup_time         => 300, # 5 minutes
+    run_time            => 21600, # 6 hours 
+); 
 
-include 'targeted_tests.rcp';
+test(
+    name_string         => 'Transition to large block sequential', 
+    write_percentage    => 100, 
+    access_pattern      => 'sequential',
+    block_size          => '1M',
+    queue_depth         => 1,
+    warmup_time         => 300, # 5 minutes
+    run_time            => 21600, # 6 hours 
+); 

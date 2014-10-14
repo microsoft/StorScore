@@ -107,7 +107,7 @@ has 'is_target_ssd' => (
 
 has 'preconditioner' => (
     is     => 'ro',
-    isa    => 'Precondition',
+    isa    => 'PreconditionRunner',
     writer => '_preconditioner'
 );
 
@@ -441,7 +441,8 @@ sub estimate_step_run_time($;$)
     my $self = shift;
 
     my $step_ref = shift;
-    my $est_pc_time = shift // Precondition::NORMAL_MIN_RUN_SECONDS;
+    my $est_pc_time =
+        shift // PreconditionRunner::NORMAL_MIN_RUN_SECONDS;
 
     my $time = 0;
 
@@ -460,7 +461,8 @@ sub estimate_run_time(;$)
 {
     my $self = shift;
 
-    my $est_pc_time = shift // Precondition::NORMAL_MIN_RUN_SECONDS;
+    my $est_pc_time =
+        shift // PreconditionRunner::NORMAL_MIN_RUN_SECONDS;
 
     my $total = 0;
 
@@ -678,11 +680,13 @@ sub warn_expected_run_time
     {
         if( $self->quick_test )
         {
-            $est_pc_time = Precondition::QUICK_TEST_MIN_RUN_SECONDS;
+            $est_pc_time =
+                PreconditionRunner::QUICK_TEST_MIN_RUN_SECONDS;
         }
         else
         {
-            $est_pc_time = Precondition::NORMAL_MIN_RUN_SECONDS;
+            $est_pc_time =
+                PreconditionRunner::NORMAL_MIN_RUN_SECONDS;
         }
     }
 
@@ -695,13 +699,15 @@ sub warn_expected_run_time
     
     if( $self->do_initialize )
     {
+        print " after target init";
+
         if( $self->is_target_ssd )
         {
-            print" after 2 passes of target init.\n";
+            print " (2 overwrites).\n";
         }
         else
         {
-            print" after 1 pass of target init.\n";
+            print " (1 overwrite).\n";
         }
     }
     else

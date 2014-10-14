@@ -40,7 +40,7 @@ $device_db{'PLEXTOR PX-G256M6e'} =
     'Host Writes'   =>
     {
         'Attribute' => 241,
-        'Unit'      => 32 * BYTES_PER_MB,
+        'Unit'      => 32 * BYTES_PER_MB_BASE2,
     }
 };
 
@@ -52,12 +52,12 @@ $device_db{'LITEON IT EKE-960P1P'} =
     'Host Writes'   =>
     {
         'Attribute' => 241,
-        'Unit'      => 32 * BYTES_PER_MB,
+        'Unit'      => 32 * BYTES_PER_MB_BASE2,
     },
     'Controller Writes' =>
     {
        'Attribute'  => 233,
-       'Unit'       => BYTES_PER_GB, 
+       'Unit'       => BYTES_PER_GB_BASE2,
     }
 };
 
