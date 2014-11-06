@@ -88,18 +88,25 @@ sub initialize()
     
     if( $self->is_target_ssd and not $self->quick_test )
     {
-        my $file_size = -s $self->target_file;
-        my $pd_size = get_drive_size( $self->pdnum );
+		if ( $self->raw_disk )
+		{
+			$num_passes = 2;
+		}
+		else
+		{
+            my $file_size = -s $self->target_file;
+            my $pd_size = get_drive_size( $self->pdnum );
 
-        # We want to dirty all of the NAND, including the OP
-        # to avoid measuring the fresh-out-of-the-box condition.
-        # 
-        # Writing the drive 2x is overkill, but we do it only once.
-        #
-        # Note that in cases where the file is much smaller than
-        # the drive, we will need to write the file many times in
-        # order to write the drive once.
-        $num_passes = int( 2 * ( $pd_size / $file_size ) );
+            # We want to dirty all of the NAND, including the OP
+            # to avoid measuring the fresh-out-of-the-box condition.
+            # 
+            # Writing the drive 2x is overkill, but we do it only once.
+            #
+            # Note that in cases where the file is much smaller than
+            # the drive, we will need to write the file many times in
+            # order to write the drive once.
+            $num_passes = int( 2 * ( $pd_size / $file_size ) );
+    	}
     }
 
     my $cmd = "precondition.exe ";
