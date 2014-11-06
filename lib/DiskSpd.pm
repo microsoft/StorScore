@@ -123,7 +123,17 @@ sub run($$)
     my $cmd = "DiskSpd.exe ";
 
     $cmd .= "-w$write_percentage " if $write_percentage != 0;
-    $cmd .= "-r " if $access_pattern eq 'random';
+
+    if( $access_pattern eq 'random' )
+    {
+        $cmd .= "-r ";
+    }
+    else
+    {
+        # interlocked mode so we are truly sequential with multi-threads
+        $cmd .= "-si ";
+    }
+
     $cmd .= "-b$block_size ";
     $cmd .= "-t$num_threads ";  
     $cmd .= "-o$ios_per_thread ";

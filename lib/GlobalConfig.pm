@@ -61,7 +61,7 @@ sub init(@)
     my $test_id_prefix;
     my $test_time_override;
     my $warmup_time_override;
-    my $io_generator = 'sqlio';
+    my $io_generator = 'diskspd';
     my $io_generator_args;
     my $active_range = 100;
     my $partition_bytes;
