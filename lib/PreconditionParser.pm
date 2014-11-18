@@ -66,9 +66,9 @@ sub parse($$)
 
         $stats_ref->{'Steady-State Time'} = $time;
     }
-    elsif( $ss_line =~ /abandoned/ )
+    elsif( $ss_line =~ /(abandoned|assumed)/ )
     {
-        my $msg = "Steady-state abandoned after ";
+        my $msg = "Steady-state $1 after ";
         
         if( $ss_line =~ /(\d+) minutes/ )
         {

@@ -421,15 +421,13 @@ class IOGenerator
     int inFlight_;
     
     bool steadyStateAchieved_;
-    bool steadyStateAbandonedTime_;
-    bool steadyStateAbandonedIOs_;
+    bool steadyStateAssumedIOs_;
     
     array< OVERLAPPED, MAX_OUTSTANDING_IOS > overlapped_;
 
     const int TOTAL_BLOCKS;
     
     const int MAX_STEADY_STATE_IOS;
-    static const int MAX_STEADY_STATE_WAIT_HOURS = 6;
    
     int64_t qpcStart_;
     
@@ -451,8 +449,7 @@ class IOGenerator
         , completedIOs_( 0 )
         , inFlight_( 0 )
         , steadyStateAchieved_( false )
-        , steadyStateAbandonedTime_( false )
-        , steadyStateAbandonedIOs_( false )
+        , steadyStateAssumedIOs_( false )
         , TOTAL_BLOCKS( divRoundUp( targetSize, params.blockSize ) )
         , MAX_STEADY_STATE_IOS( 2 * TOTAL_BLOCKS ) // ~2 overwrites
         , qpcStart_( qpc() )
@@ -532,9 +529,7 @@ class IOGenerator
     {
         if( params.runUntilSteadyState )
         {
-            if( steadyStateAchieved_ ||
-                steadyStateAbandonedTime_ ||
-                steadyStateAbandonedIOs_ )
+            if( steadyStateAchieved_ || steadyStateAssumedIOs_ )
             {
                 return false;
             }
@@ -694,9 +689,7 @@ class IOGenerator
 
     string getSteadyStateReasonString() const
     {
-        assert( steadyStateAchieved_ ||
-                steadyStateAbandonedTime_ ||
-                steadyStateAbandonedIOs_ );
+        assert( steadyStateAchieved_ || steadyStateAssumedIOs_ );
         
         ostringstream msg;
         
@@ -707,14 +700,9 @@ class IOGenerator
             msg << "achieved steady-state after "
                 << secondsElapsed << " seconds";
         }
-        else if( steadyStateAbandonedTime_ )
+        else if( steadyStateAssumedIOs_ )
         {
-            msg << "abandoned steady-state after "
-                << secondsElapsed << " seconds";
-        }
-        else if( steadyStateAbandonedIOs_ )
-        {
-            msg << "abandoned steady-state after "
+            msg << "assumed steady-state after "
                 << MAX_STEADY_STATE_IOS << " IOs";
         }
 
@@ -738,15 +726,9 @@ class IOGenerator
 
         // Some drives have such erratic performance that
         // they may never meet our definiton of steady-state.
-        if( hoursElapsed >= MAX_STEADY_STATE_WAIT_HOURS )
-        {
-            steadyStateAbandonedTime_ = true;
-            done = true;
-        }
-  
         if( completedIOs_ >= MAX_STEADY_STATE_IOS )
         {
-            steadyStateAbandonedIOs_ = true;
+            steadyStateAssumedIOs_ = true;
             done = true;
         }
 

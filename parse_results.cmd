@@ -236,8 +236,8 @@ sub compute_steady_state_error_and_warn($)
 
     my $rel_diff = $abs_diff / $max_abs * 100; 
 
-    # Complain if the relative difference is greater than 5%
-    unless( $rel_diff <= 5 )
+    # Complain if the relative difference is greater than 10%
+    unless( $rel_diff <= 10 )
     {
         my $test_name = $stats_ref->{'Test Name'};
         warn "\tPrecondition didn't achieve steady-state? $test_name\n";
@@ -342,6 +342,11 @@ my @cols =
         name   => 'Compressibility',
         format => '0%',
         type   => 'io_pattern'
+    },
+        
+    {
+        name   => "Warmup MB/sec Total",
+        format => '#,##0.00',
     },
 );
 

@@ -33,6 +33,23 @@ use warnings;
 use DeviceDB;
 use Util;
 
+$device_db{'Micron_M600_MTFDDAK512MBF'} =
+{
+    'Friendly Name'   => 'Micron M600 512GB',
+    'Rated PE Cycles' => 3000,
+    'Host Writes' =>
+    {
+        'Attribute'  => 247,
+        'Unit'       => 32 * BYTES_PER_SECTOR,
+    },
+    'Controller Writes' =>
+    {
+        'Attribute' => 248,
+        'Unit'      => 32 * BYTES_PER_SECTOR,
+        'Additive'  => 1,
+    }
+};
+
 $device_db{'Micron_M500_MTFDDAK480MAV'} =
 {
     'Friendly Name'               => 'Micron M500 480GB',

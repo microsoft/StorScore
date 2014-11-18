@@ -77,6 +77,16 @@ $device_db{'SAMSUNG MZ7WD960HAGP-00003'} =
 $device_db{'SAMSUNG MZ7WD960HMHP-000MV'} = 
 {
     'Friendly Name'               => 'Samsung SV843 960GB',
+    'Host Writes'   =>
+    {
+        'Attribute'       => 241,
+        'Unit'            => BYTES_PER_SECTOR,
+    },
+    'Controller Writes' =>
+    {
+        'Attribute' => 243,
+        'Unit'      => BYTES_PER_SECTOR,
+    },
     'Rated PE Cycles'             => 35000,
 };
 
