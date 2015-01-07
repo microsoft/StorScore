@@ -211,8 +211,8 @@ sub parse_cmd_line($$)
         $stats_ref->{'Access Type'} = 'sequential';
     }
 
-    $cmd_line =~ /-b(\d+)/;
-    $stats_ref->{'Access Size'} = $1;
+    $cmd_line =~ /-b(\w+)/;
+    $stats_ref->{'Access Size'} = human_to_kilobytes( $1 );
     
     my $num_threads = 1;
 
