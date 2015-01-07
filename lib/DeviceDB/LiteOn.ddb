@@ -61,5 +61,50 @@ $device_db{'LITEON IT EKE-960P1P'} =
     }
 };
 
+$device_db{'LITEON IT EKT-960P1P'} =
+{
+    'Friendly Name'         => 'LiteOn EKE 960GB',
+    'Wear Range Attribute'  => 177,
+    'Rated PE Cycles'       => 3000,
+    'Host Writes'   =>
+    {
+        'Attribute' => 241,
+        'Unit'      => 32 * BYTES_PER_MB_BASE2,
+    },
+    'Controller Writes' =>
+    {
+       'Attribute'  => 233,
+       'Unit'       => BYTES_PER_GB_BASE2,
+    }
+};
+
+$device_db{'EP1-KF960'} =
+{
+    'Friendly Name'         => 'LiteOn EP1 960GB',
+    'Wear Range Attribute'  => 177,
+    'Rated PE Cycles'       => 15000,
+    'Host Writes'   =>
+    {
+        'Attribute' => 241,
+        'Unit'      => 32 * BYTES_PER_MB_BASE2,
+    },
+    'Controller Writes' =>
+    {
+       'Attribute'  => 233,
+       'Unit'       => BYTES_PER_GB_BASE2,
+    }
+};
+
+$device_db{'PLEXTOR PX-G512M6e'} =
+{
+    'Friendly Name'         => 'PLEXTOR PX-G512M6e',
+    'Wear Range Attribute'  => 177,
+    'Rated PE Cycles'       => 3000,
+    'Host Writes'   =>
+    {
+        'Attribute' => 241,
+        'Unit'      => 32 * BYTES_PER_MB_BASE2,
+    },
+};
 
 1;
