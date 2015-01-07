@@ -77,7 +77,7 @@ $device_db{'Marvell AltaPlus R2.2'} =
     'Controller Writes' =>
     {
         'Attribute' => 234,
-        'Unit'      => BYTES_PER_GB_BASE2,
+        'Unit'      => 16 * BYTES_PER_KB_BASE2,
     }
 };
 
