@@ -61,22 +61,6 @@ has 'name_string' => (
     default => undef
 );
 
-has 'raw_filename' => (
-    is       => 'ro',
-    isa      => 'Str',
-    lazy     => 1,
-    default  => sub { $_[0]->_build_csv_filename( 'raw' ) },
-    init_arg => undef
-);
-
-has 'pruned_filename' => (
-    is       => 'ro',
-    isa      => 'Str',
-    lazy     => 1,
-    default  => sub { $_[0]->_build_csv_filename( 'pruned' ) },
-    init_arg => undef
-);
-
 has 'keep_raw_file' => (
     is      => 'ro',
     isa     => 'Bool',
@@ -87,7 +71,7 @@ has 'keep_raw_file' => (
 my $counters_filename =
     mktemp( $ENV{'TEMP'} . "\\logman_countersXXXXXX" );
 
-sub _build_csv_filename
+sub build_csv_filename
 {
     my $self = shift;
     my $prefix = shift;
@@ -96,6 +80,18 @@ sub _build_csv_filename
     my $dir = $self->output_dir;
 
     return "$dir\\logman-$prefix-$name_string.csv";
+}
+
+sub raw_filename
+{
+    my $self = shift;
+    return $self->build_csv_filename( 'raw' );
+}
+
+sub pruned_filename
+{
+    my $self = shift;
+    return $self->build_csv_filename( 'pruned' );
 }
 
 sub status
