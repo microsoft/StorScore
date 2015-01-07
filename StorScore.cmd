@@ -400,6 +400,7 @@ sub check_system_compatibility
         exit( -1 );
     }
 
+    # False positive on Server 2012 R2?
     unless( is_vc_runtime_present( '12.0', 'x86' ) )
     {
         warn <<"MSG";
@@ -412,6 +413,7 @@ MSG
         exit( -1 );
     }
 
+    # False positive on Server 2012 R2?
     unless( is_vc_runtime_present( '12.0', 'x64' ) )
     {
         warn <<"MSG";
