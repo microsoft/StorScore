@@ -1859,11 +1859,11 @@ sub get_bing_weight
     my %io_pattern = @_;
 
     my $metric_weight = 0; # Ignore by default.
-
+    
     # Index serving depends on consistently-low latency.
     # We consider 6 latency metrics and only 1 throughput.
-    if( ( $metric eq "MB/sec Total" ) or
-        ( $metric eq "50th Percentile Total" ) or
+    # Latency is 3x as important as throughput in this scheme.
+    if( ( $metric eq "50th Percentile Total" ) or
         ( $metric eq "2-nines Percentile Total" ) or
         ( $metric eq "3-nines Percentile Total" ) or
         ( $metric eq "4-nines Percentile Total" ) or
@@ -1872,15 +1872,19 @@ sub get_bing_weight
     {
         $metric_weight = 1;
     }
-    
+    elsif( $metric eq "MB/sec Total" )
+    {
+        $metric_weight = 2;
+    }
+
     my $test_weight = 1;
     
     # ISSUE-REVIEW:
     # Should we filter out the smart tests?
     # $test_weight = 0 if $test_name =~ /Background/;
 
-    # Index serving is 100% reads
-    if( $io_pattern{'R Mix'} == 100 )
+    # Index serving is mostly reads
+    if( $io_pattern{'R Mix'} > 0 )
     {
         $test_weight++;
 
