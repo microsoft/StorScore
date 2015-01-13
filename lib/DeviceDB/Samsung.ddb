@@ -90,4 +90,10 @@ $device_db{'SAMSUNG MZ7WD960HMHP-000MV'} =
     'Rated PE Cycles'             => 35000,
 };
 
+$device_db{'NVMe SAMSUNG MZ1WV480'} = 
+{
+    'Friendly Name'               => 'Samsung SM953 480GB',
+    'Rated PE Cycles'             => 18000,
+};
+
 1;
