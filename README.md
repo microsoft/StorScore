@@ -40,6 +40,12 @@ The Excel file has the usual raw metrics (throughput, latency, etc.) but also
 contains the result of our scoring system, which we designed to help summarize
 what would otherwise be far too much data (hence the name: StorScore).
 
+Lecture Video
+---------
+Laura and Mark gave a web presentation in August 2014 to the Microsoft MVP storage community.  The talk was recorded, and provides a general overview and a demo of StorScore:
+
+https://www.youtube.com/watch?v=gJZGu-Y3uXE
+     
 Dependencies
 ------------
 
