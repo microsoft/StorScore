@@ -105,7 +105,6 @@ $device_db{'Micron_M500DC_MTFDDAK480MBB'} =
 {
     # Version 2814 firmware only?
     'Friendly Name'     => 'Micron M500 DC 480GB',
-    'Rated PE Cycles'   => 5000,
     'Internal Capacity' => '768 GB',
     'Host Writes'   =>
     {

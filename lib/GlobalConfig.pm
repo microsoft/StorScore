@@ -65,7 +65,7 @@ sub init(@)
     my $io_generator_args;
     my $active_range = 100;
     my $partition_bytes;
-    my $quick_test = 0;
+    my $demo_mode = 0;
     my $results_share;
     my $results_share_user;
     my $results_share_pass;
@@ -96,7 +96,7 @@ sub init(@)
         "io_generator_args=s"    => \$io_generator_args,
         "active_range=i"         => \$active_range,
         "partition_bytes=i"      => \$partition_bytes,
-        "quick_test!"            => \$quick_test,
+        "demo_mode!"             => \$demo_mode,
         "results_share=s"        => \$results_share,
         "results_share_user=s"   => \$results_share_user,
         "results_share_pass=s"   => \$results_share_pass,
@@ -231,7 +231,7 @@ END
         }
     }
 
-    if( $quick_test )
+    if( $demo_mode )
     {
         $active_range = 1;
         $test_time_override = 5;
@@ -321,7 +321,7 @@ END
         io_generator_args       => $io_generator_args,
         active_range            => $active_range,
         partition_bytes         => $partition_bytes,
-        quick_test              => $quick_test,
+        demo_mode               => $demo_mode,
         output_dir              => $output_dir,
         results_share           => $results_share,
         results_share_user      => $results_share_user,

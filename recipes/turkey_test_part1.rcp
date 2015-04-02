@@ -28,23 +28,11 @@
 
 require 'matrix.rpm';
 
-my @block_sizes;
-
-if( $gc{'is_target_ssd'} )
-{
-    # ISSUE-REVIEW: I guess we think 8K is important only for SSD?
-    @block_sizes = qw( 2M 8K 4K );
-}
-else
-{
-    @block_sizes = qw( 2M 4K );
-}
-
 do_matrix(
-    access_patterns     => [qw( sequential random )],
+    access_patterns     => [qw( sequential )],
     write_percentages   => [qw( 100 30 0 )],
-    block_sizes         => \@block_sizes, 
-    queue_depths        => [qw( 256 1 )],
-    warmup_time         => 60,
+    block_sizes         => [qw( 2M 1M 512K 64K 16K 8K 4K 1K )],
+    queue_depths        => [qw( 256 64 16 4 1 )],
+    warmup_time         => 300,
     run_time            => 3600
 );

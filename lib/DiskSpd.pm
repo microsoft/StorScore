@@ -152,6 +152,9 @@ sub run($$)
         int Compressibility::FILE_SIZE / 1024 / 1024;
 
     $cmd .= "-Z$entropy_file_size_MB" . qq(M,"$entropy_file" );
+    
+    # All-purpose escape hatch.  Support arbitrary args.
+    $cmd .= " " . $self->extra_args if defined $self->extra_args;
 
     if( $self->raw_disk )
     {
@@ -162,9 +165,6 @@ sub run($$)
         $cmd .= $self->target_file;
     }
     
-    # All-purpose escape hatch.  Support arbitrary args.
-    $cmd .= " " . $self->extra_args if defined $self->extra_args;
-
     my $out_file = $self->output_dir .
         "\\$run_type-$test_ref->{'name_string'}.txt";
     

@@ -82,7 +82,41 @@ $device_db{'EP1-KF960'} =
 {
     'Friendly Name'         => 'LiteOn EP1 960GB',
     'Wear Range Attribute'  => 177,
-    'Rated PE Cycles'       => 15000,
+    'Rated PE Cycles'       => 6000,
+    'Host Writes'   =>
+    {
+        'Attribute' => 241,
+        'Unit'      => 32 * BYTES_PER_MB_BASE2,
+    },
+    'Controller Writes' =>
+    {
+       'Attribute'  => 233,
+       'Unit'       => BYTES_PER_GB_BASE2,
+    }
+};
+
+$device_db{'LITEON EP1-KG480-PLP'} =
+{
+    'Friendly Name'         => 'LiteOn EP1-KG 480GB',
+    'Wear Range Attribute'  => 177,
+    'Rated PE Cycles'       => 20000,
+    'Host Writes'   =>
+    {
+        'Attribute' => 241,
+        'Unit'      => 32 * BYTES_PER_MB_BASE2,
+    },
+    'Controller Writes' =>
+    {
+       'Attribute'  => 233,
+       'Unit'       => BYTES_PER_GB_BASE2,
+    }
+};
+
+$device_db{'LITEON EP1-KB480'} =
+{
+    'Friendly Name'         => 'LiteOn EP1-KB 480GB',
+    'Wear Range Attribute'  => 177,
+    'Rated PE Cycles'       => 3000,
     'Host Writes'   =>
     {
         'Attribute' => 241,

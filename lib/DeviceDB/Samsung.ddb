@@ -39,6 +39,13 @@ $device_db{'SAMSUNG MZ7TE480HMHP-00003'} =
     'Rated PE Cycles'             => 3000,
 };
 
+# ISSUE-REVIEW: Oddly generic device model on recent PM853 samples
+$device_db{'SAMSUNG SATA SSD'} =
+{
+    'Friendly Name'               => 'Samsung PM853 480GB',
+    'Rated PE Cycles'             => 3000,
+};
+
 $device_db{'SAMSUNG MZ7TE960HMHP-00003'} = 
 {
     'Friendly Name'               => 'Samsung PM853 960GB',

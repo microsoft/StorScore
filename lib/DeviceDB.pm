@@ -30,6 +30,7 @@ use strict;
 use warnings;
 use English;
 use Util;
+use Hash::Merge::Simple 'merge';
 
 use Exporter;
 use vars qw(@ISA @EXPORT);
@@ -37,13 +38,30 @@ use vars qw(@ISA @EXPORT);
 @ISA = qw(Exporter);
 @EXPORT = '%device_db';
 
-our %device_db;
-
-my @device_files = glob ( "$devices_dir\\*.ddb" );
-
-foreach my $ddb_module ( @device_files )
+my %public;
 {
-    require $ddb_module;
+	local *device_db = \%public;
+
+	my @device_files = glob ( "$devices_dir\\*.ddb" );
+
+	foreach my $ddb_module ( @device_files )
+	{
+	    require $ddb_module;
+	}
 }
+
+my %private;
+{
+	local *device_db = \%private;
+
+	my @device_files = glob ( "$devices_dir\\private\\*.ddb" );
+
+	foreach my $ddb_module ( @device_files )
+	{
+	    require $ddb_module;
+	}
+}
+
+our %device_db = %{ merge( \%public, \%private ) };
 
 1;

@@ -75,7 +75,7 @@ has 'do_precondition' => (
     default => 1
 );
 
-has 'quick_test' => (
+has 'demo_mode' => (
     is      => 'ro',
     isa     => 'Maybe[Bool]',
     default => 0
@@ -436,23 +436,15 @@ sub get_num_test_steps
     return scalar grep { $_->{'kind'} eq 'test' } @{$self->steps};
 }
 
-sub estimate_step_run_time($;$)
+sub calculate_step_run_time($)
 {
     my $self = shift;
-
     my $step_ref = shift;
-    my $est_pc_time =
-        shift // PreconditionRunner::NORMAL_MIN_RUN_SECONDS;
 
     my $time = 0;
 
     $time += $step_ref->{'run_time'} // 0;
     $time += $step_ref->{'warmup_time'} // 0;
-
-    if( $step_ref->{'kind'} eq 'test' and $self->do_precondition )
-    {
-        $time += $est_pc_time;
-    }
 
     return $time;
 }
@@ -468,7 +460,18 @@ sub estimate_run_time(;$)
 
     foreach my $step_ref ( @{$self->steps} )
     {
-        $total += $self->estimate_step_run_time( $step_ref, $est_pc_time );
+        $total += $self->calculate_step_run_time( $step_ref );
+    }
+   
+    if( $self->do_precondition )
+    {
+        foreach my $step_ref ( @{$self->steps} )
+        {
+            if( $step_ref->{'kind'} eq 'test' )
+            {
+                $total += $est_pc_time;
+            }
+        }
     }
 
     return $total;
@@ -507,6 +510,29 @@ sub BUILD
     );
 }
 
+sub get_time_message
+{
+    my $self = shift;
+    my $step_ref = shift;
+   
+    my $msg = "";
+
+    # Only do this for "kinds" that take a while 
+    if( $step_ref->{'kind'} ~~ [qw( test idle )] )
+    {
+        my $start_time = strftime "%I:%M:%S %p", localtime( time() );
+
+        my $run_time = $self->calculate_step_run_time( $step_ref );
+        
+        my $end_time = 
+            strftime "%I:%M:%S %p", localtime( time() + $run_time );
+
+        $msg = "$start_time -> $end_time";
+    }
+
+    return $msg;
+}
+
 sub get_announcement_message
 {
     my $self = shift;
@@ -517,9 +543,9 @@ sub get_announcement_message
     if( $step_ref->{'kind'} eq 'test' )
     {
         my $short_pattern =
-            $step_ref->{'access_pattern'} eq "random" ?  "rand" : "seq";
+            $step_ref->{'access_pattern'} eq "random" ?  "rnd" : "seq";
 
-        $msg = sprintf( "%4s,  %4s,  %3d%% read,  %3d%% write,  QD=%2d",
+        $msg = sprintf( " %4s, %3s, %3d%% read, %3d%% wri, QD=%3d",
             $step_ref->{'block_size'},
             $short_pattern,
             $step_ref->{'read_percentage'},
@@ -562,20 +588,19 @@ sub run_step
         "[%3d/%3d] ", $self->current_step, $self->get_num_steps );
 
     my $announce = $self->get_announcement_message( $step_ref );
+    
+    my $time = $self->get_time_message( $step_ref );
 
-    my $time = $self->estimate_step_run_time( $step_ref );
-
-    my $eta = 
-        "ETA: " . strftime "%I:%M:%S %p", localtime( time() + $time );
-
-    my $cols_remaining =
-        80 - length( $progress )
-        - length( $announce )
-        - length( $eta ) - 1;
+    my $cols_remaining = 80;
+    
+    $cols_remaining -=
+        length( $progress ) +
+        length( $announce ) +
+        length( $time ) + 1;
 
     my $pad = ' ' x $cols_remaining;
 
-    print $progress . $announce . $pad . $eta;
+    print $progress . $announce . $pad . $time;
 
     if( $kind eq 'test' )
     {
@@ -586,8 +611,10 @@ sub run_step
 
         my $ns = $step_ref->{'name_string'};
 
-        $self->smartctl_runner->collect( "smart-before-$ns.txt" )
-            if defined $self->smartctl_runner;
+        $self->smartctl_runner->collect(
+            file_name => "smart-before-$ns.txt"
+        )
+        if defined $self->smartctl_runner;
 
         if( defined $self->logman_runner )
         {
@@ -603,8 +630,10 @@ sub run_step
 
         $self->io_generator->run( $step_ref, 'test' );
 
-        $self->smartctl_runner->collect( "smart-after-$ns.txt" )
-            if defined $self->smartctl_runner;
+        $self->smartctl_runner->collect(
+            file_name => "smart-after-$ns.txt"
+        )
+        if defined $self->smartctl_runner;
 
         $self->logman_runner->stop() if defined $self->logman_runner;
         $self->power->stop() if defined $self->power;
@@ -678,7 +707,7 @@ sub warn_expected_run_time
    
     if( $num_pc > 0 )
     {
-        if( $self->quick_test )
+        if( $self->demo_mode )
         {
             $est_pc_time =
                 PreconditionRunner::QUICK_TEST_MIN_RUN_SECONDS;

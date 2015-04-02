@@ -85,11 +85,15 @@ sub is_binary_present()
 sub collect
 {
     my $self = shift;
-    my $file_name = shift;
-    my $dev_type = shift // $self->device_type;
+    my %args = @_;
+    
+    my $file_name = $args{'file_name'};
+    my $dev_type = $args{'dev_type'} // $self->device_type;
+    my $do_identify = $args{'do_identify'};
 
     my $cmd = "smartctl.exe ";
     $cmd .= "-d $dev_type " if defined $dev_type;
+    $cmd .= "--identify " if defined $do_identify;
     $cmd .= "-a /dev/pd" . $self->pdnum . " ";
     $cmd .= "-s on ";
 
@@ -115,7 +119,10 @@ sub detect_device_type()
 
     foreach my $try_type ( qw( ata sat scsi ) )
     {
-        $self->collect( $file_name, $try_type );
+        $self->collect(
+            file_name => $file_name,
+            dev_type  => $try_type
+        );
 
         open my $SMART, "<$file_name"
             or die "Couldn't open SMART output file: $file_name\n";
@@ -167,7 +174,7 @@ sub BUILD
 
     my $file_name = mktemp( $ENV{'TEMP'} . "\\smartctl_initXXXXXX" );
    
-    $self->collect( $file_name );
+    $self->collect( file_name => $file_name );
        
     my %stats;
 

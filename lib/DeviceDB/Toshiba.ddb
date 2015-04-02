@@ -26,25 +26,36 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-require 'matrix.rpm';
+package DeviceDB::Toshiba; 
 
-my @block_sizes;
+use strict;
+use warnings;
+use DeviceDB;
+use Util;
 
-if( $gc{'is_target_ssd'} )
+$device_db{'TOSHIBA THNSNJ480PCS3'} =
 {
-    # ISSUE-REVIEW: I guess we think 8K is important only for SSD?
-    @block_sizes = qw( 2M 8K 4K );
-}
-else
-{
-    @block_sizes = qw( 2M 4K );
-}
+    'Friendly Name'     => 'Toshiba Hawk-M3Rx 480GB',
+};
 
-do_matrix(
-    access_patterns     => [qw( sequential random )],
-    write_percentages   => [qw( 100 30 0 )],
-    block_sizes         => \@block_sizes, 
-    queue_depths        => [qw( 256 1 )],
-    warmup_time         => 60,
-    run_time            => 3600
-);
+$device_db{'TOSHIBA THNSNJ480PCSZ'} =
+{
+    'Friendly Name'     => 'Toshiba Hawk-M3Ry 480GB',
+};
+
+$device_db{'TOSHIBA THNSNJ960PCSZ'} =
+{
+    'Friendly Name'     => 'Toshiba Hawk-M3Ry 960GB',
+};
+
+$device_db{'TOSHIBA THNSNJ512GCSU'} =
+{
+    'Friendly Name' => 'Toshiba HG6y 512GB',
+};
+
+$device_db{'TOSHIBA THNSNH512GCST'} =
+{
+    'Friendly Name'               => 'Toshiba HG5d 512GB',
+};
+
+1;

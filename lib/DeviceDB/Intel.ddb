@@ -26,25 +26,36 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-require 'matrix.rpm';
+package DeviceDB::Intel; 
 
-my @block_sizes;
+use strict;
+use warnings;
+use DeviceDB;
+use Util;
 
-if( $gc{'is_target_ssd'} )
+$device_db{'INTEL SSDSC2BW480A3D'} =
 {
-    # ISSUE-REVIEW: I guess we think 8K is important only for SSD?
-    @block_sizes = qw( 2M 8K 4K );
-}
-else
-{
-    @block_sizes = qw( 2M 4K );
-}
+    'Friendly Name'     => 'Intel 520 480GB',
+};
 
-do_matrix(
-    access_patterns     => [qw( sequential random )],
-    write_percentages   => [qw( 100 30 0 )],
-    block_sizes         => \@block_sizes, 
-    queue_depths        => [qw( 256 1 )],
-    warmup_time         => 60,
-    run_time            => 3600
-);
+$device_db{'INTEL SSDSC2BA400G3'} = 
+{
+    'Friendly Name'               => 'Intel DC S3700 400GB',
+};
+
+$device_db{'INTEL SSDSC2BB480G4'} = 
+{
+    'Friendly Name'               => 'Intel DC S3500 480GB',
+};
+
+$device_db{'INTEL SSDSC2BB800G4'} = 
+{
+    'Friendly Name'               => 'Intel DC S3500 800GB',
+};
+
+$device_db{'INTEL SSDSC2BW480A4'} = 
+{
+    'Friendly Name'               => 'Intel 530 480GB',
+};
+
+1;

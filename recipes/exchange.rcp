@@ -26,25 +26,32 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-require 'matrix.rpm';
-
-my @block_sizes;
-
-if( $gc{'is_target_ssd'} )
-{
-    # ISSUE-REVIEW: I guess we think 8K is important only for SSD?
-    @block_sizes = qw( 2M 8K 4K );
-}
-else
-{
-    @block_sizes = qw( 2M 4K );
-}
-
-do_matrix(
-    access_patterns     => [qw( sequential random )],
-    write_percentages   => [qw( 100 30 0 )],
-    block_sizes         => \@block_sizes, 
-    queue_depths        => [qw( 256 1 )],
+test(
+    name_string         => '4K Random 50/50', 
+    write_percentage    => 50, 
+    access_pattern      => 'random',
+    block_size          => '4K',
+    queue_depth         => 32,
     warmup_time         => 60,
     run_time            => 3600
-);
+); 
+
+test(
+    name_string         => '1M Sequential Reads', 
+    write_percentage    => 0, 
+    access_pattern      => 'sequential',
+    block_size          => '1M',
+    queue_depth         => 32,
+    warmup_time         => 60,
+    run_time            => 3600
+); 
+
+test(
+    name_string         => '1M Sequential Writes', 
+    write_percentage    => 100, 
+    access_pattern      => 'sequential',
+    block_size          => '1M',
+    queue_depth         => 32,
+    warmup_time         => 60,
+    run_time            => 3600
+); 

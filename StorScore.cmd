@@ -68,8 +68,6 @@ use LogmanRunner;
 use Power;
 use WmicRunner;
 
-$OUTPUT_AUTOFLUSH = 1;
-
 check_system_compatibility();
 
 mkdir( $results_dir ) unless( -d $results_dir );
@@ -138,7 +136,7 @@ my $recipe = Recipe->new(
     do_initialize        => $gc{'initialize'},
     do_precondition      => $gc{'precondition'},
     io_generator_type    => $gc{'io_generator'},
-    quick_test           => $gc{'quick_test'},
+    demo_mode            => $gc{'demo_mode'},
     test_time_override   => $gc{'test_time_override'},
     warmup_time_override => $gc{'warmup_time_override'},
     is_target_ssd        => $gc{'is_target_ssd'},
@@ -188,69 +186,63 @@ my $overall_start = time();
 
 mkdir( $gc{'output_dir'} );
 
-if( $pretend )
+if( $gc{'clean_disk'} )
 {
-    $gc{'target_volume'} = 'P:';
-    $gc{'target_file'} = "P:\\pretend.dat";
+    print "Cleaning disk...\n";
+
+    clean_disk( $gc{'target_physicaldrive'} );
 }
-else
+
+if( $gc{'create_new_filesystem'} )
 {
-    if( $gc{'clean_disk'} )
-    {
-        print "Cleaning disk...\n";
+    print "Creating new filesystem...\n";
 
-        clean_disk( $gc{'target_physicaldrive'} );
+    create_filesystem(
+        $gc{'target_physicaldrive'},
+        $gc{'partition_bytes'}
+    );
+
+    $gc{'target_volume'} =
+    physicaldrive_to_volume( $gc{'target_physicaldrive'} );
+}
+
+if( $gc{'create_new_file'} )
+{
+    print "Creating test file...\n";
+
+    my $free_bytes = get_volume_free_space( $gc{'target_volume'} );
+
+    die "Couldn't determine free space"
+    unless defined $free_bytes;
+
+    # Reserve 1GB right off the top.
+    # When we tried to use the whole drive, we saw odd errors.
+    # Expectation is that test results should still be valid. 
+    my $size = $free_bytes - BYTES_PER_GB_BASE2;
+
+    # Support testing less then 100% of the disk
+    $size = int( $size * $gc{'active_range'} / 100 );
+
+    # Round to an even increment of 2MB.
+    # Idea is to ensure the file size is an even multiple 
+    # of pretty much any block size we might test. 
+    $size = int( $size / BYTES_IN_2MB ) * BYTES_IN_2MB;
+
+    $gc{'target_file'} = "$gc{'target_volume'}\\$TEST_FILE_NAME";
+
+    if( -e $gc{'target_file'} and not $pretend )
+    {
+        die "Error: target file $gc{'target_file'} exists!\n";
     }
 
-    if( $gc{'create_new_filesystem'} )
-    {
-        print "Creating new filesystem...\n";
-        
-        create_filesystem(
-            $gc{'target_physicaldrive'},
-            $gc{'partition_bytes'}
-        );
-       
-        $gc{'target_volume'} =
-            physicaldrive_to_volume( $gc{'target_physicaldrive'} );
-    }
+    fast_create_file( $gc{'target_file'}, $size ) 
+        or die "Couldn't create $size byte file: $gc{'target_file'}\n";
+}
 
-    if( $gc{'create_new_file'} )
-    {
-        print "Creating test file...\n";
-        
-        my $free_bytes = get_disk_free( $gc{'target_volume'} );
-
-        die "Couldn't determine free space"
-            unless defined $free_bytes;
-
-        # Reserve 1GB right off the top.
-        # When we tried to use the whole drive, we saw odd errors.
-        # Expectation is that test results should still be valid. 
-        my $size = $free_bytes - BYTES_PER_GB_BASE2;
-
-        # Support testing less then 100% of the disk
-        $size = int( $size * $gc{'active_range'} / 100 );
-      
-        # Round to an even increment of 2MB.
-        # Idea is to ensure the file size is an even multiple 
-        # of pretty much any block size we might test. 
-        $size = int( $size / BYTES_IN_2MB ) * BYTES_IN_2MB;
-
-        $gc{'target_file'} = "$gc{'target_volume'}\\$TEST_FILE_NAME";
-
-        die "Error: target file $gc{'target_file'} exists!\n"
-            if -e $gc{'target_file'};
-
-        fast_create_file( $gc{'target_file'}, $size ) 
-            or die "Couldn't create $size byte file: $gc{'target_file'}\n";
-    }
-
-    if( $gc{'target_volume'} )
-    {
-        print "Syncing target volume...\n";
-        execute_task( "sync.cmd $gc{'target_volume'}", quiet => 1 );
-    }
+if( $gc{'target_volume'} )
+{
+    print "Syncing target volume...\n";
+    execute_task( "sync.cmd $gc{'target_volume'}", quiet => 1 );
 }
 
 write_version_file( $gc{'output_dir'} );
@@ -263,8 +255,11 @@ my $wmic_runner = WmicRunner->new(
 
 $wmic_runner->collect( 'wmic.txt' );
 
-$smartctl_runner->collect( "smart.txt" ) 
-    if defined $smartctl_runner; 
+$smartctl_runner->collect(
+    file_name   => "smart.txt",
+    do_identify => 1
+) 
+if defined $smartctl_runner; 
 
 my $logman_runner = LogmanRunner->new(
     raw_disk      => $gc{'raw_disk'},
@@ -307,9 +302,10 @@ if( $gc{'collect_power'} )
 my $pc = PreconditionRunner->new(
     raw_disk        => $gc{'raw_disk'},
     pdnum           => $gc{'target_physicaldrive'},
+    volume          => $gc{'target_volume'},
     target_file     => $gc{'target_file'},
     output_dir      => $gc{'output_dir'},
-    quick_test      => $gc{'quick_test'},
+    demo_mode       => $gc{'demo_mode'},
     is_target_ssd   => $gc{'is_target_ssd'}
 );
 
@@ -431,4 +427,14 @@ MSG
         warn "\n$script_name: must run as Administrator\n\n";
         exit( -1 );
     }
+}
+
+BEGIN
+{
+    # unbuffer STDERR and STDOUT
+    select STDERR;
+    $OUTPUT_AUTOFLUSH = 1;
+
+    select STDOUT;
+    $OUTPUT_AUTOFLUSH = 1;
 }

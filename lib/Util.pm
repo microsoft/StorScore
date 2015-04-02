@@ -76,7 +76,8 @@ use vars qw(@ISA @EXPORT);
     wmic_helper
     physical_drive_exists
     get_drive_size
-    get_disk_free
+    get_volume_size
+    get_volume_free_space
     get_drive_model
     get_drive_serialnumber
     bytes_to_human
@@ -221,12 +222,24 @@ sub physical_drive_exists
     return 1;
 }
 
-sub get_disk_free($)
+sub get_volume_size($)
 {
-    my $disk = shift;
+    my $vol = shift;
     
     my $wmic_cmd = 
-        qq(path Win32_LogicalDisk where Name="$disk" get FreeSpace);
+        qq(path Win32_LogicalDisk where Name="$vol" get Size);
+
+    my @wmic_lines = split /\n/, wmic_helper( $wmic_cmd );
+ 
+    return $wmic_lines[1];
+}
+
+sub get_volume_free_space($)
+{
+    my $vol = shift;
+    
+    my $wmic_cmd = 
+        qq(path Win32_LogicalDisk where Name="$vol" get FreeSpace);
 
     my @wmic_lines = split /\n/, wmic_helper( $wmic_cmd );
     

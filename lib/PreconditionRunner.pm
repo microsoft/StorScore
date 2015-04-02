@@ -42,6 +42,12 @@ has 'pdnum' => (
     isa => 'Str'
 );
 
+has 'volume' => (
+    is      => 'ro',
+    isa     => 'Maybe[Str]',
+    default => undef
+);
+
 has 'target_file' => (
     is      => 'ro',
     isa     => 'Maybe[Str]',
@@ -54,7 +60,7 @@ has 'output_dir' => (
     required => 1
 );
 
-has 'quick_test' => (
+has 'demo_mode' => (
     is       => 'ro',
     isa      => 'Maybe[Bool]',
     default  => 0
@@ -86,16 +92,18 @@ sub initialize()
       
     my $num_passes = 1;
     
-    if( $self->is_target_ssd and not $self->quick_test )
+    if( $self->is_target_ssd and not $self->demo_mode )
     {
-		if ( $self->raw_disk )
-		{
-			$num_passes = 2;
-		}
-		else
-		{
+        if ( $self->raw_disk )
+        {
+            $num_passes = 2;
+        }
+        else
+        {
             my $file_size = -s $self->target_file;
-            my $pd_size = get_drive_size( $self->pdnum );
+            $file_size > 0 or die "Target file has zero size?";
+
+            my $vol_size = get_volume_size( $self->volume );
 
             # We want to dirty all of the NAND, including the OP
             # to avoid measuring the fresh-out-of-the-box condition.
@@ -105,8 +113,8 @@ sub initialize()
             # Note that in cases where the file is much smaller than
             # the drive, we will need to write the file many times in
             # order to write the drive once.
-            $num_passes = int( 2 * ( $pd_size / $file_size ) );
-    	}
+            $num_passes = int( 2 * ( $vol_size / $file_size ) );
+        }
     }
 
     my $cmd = "precondition.exe ";
@@ -146,7 +154,7 @@ sub run_to_steady_state($)
     $cmd .= "-w$write_percentage ";
     $cmd .= "-ss ";
     
-    if( $self->quick_test )
+    if( $self->demo_mode )
     {
         $cmd .= "-g" . QUICK_TEST_GATHER_SECONDS . " ";
         $cmd .= "-d" . QUICK_TEST_DWELL_SECONDS . " ";
