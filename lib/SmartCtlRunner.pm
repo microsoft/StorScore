@@ -76,8 +76,12 @@ has 'sata_version' => (
 
 sub is_binary_present()
 {
-    my $missing = execute_task( 'where smartctl', quiet => 1 );
-
+    my $missing = execute_task( 
+        'where smartctl',
+        force => 1,
+        quiet => 1
+    );
+    
     return 0 if $missing;
     return 1;
 }
