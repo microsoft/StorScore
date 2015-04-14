@@ -141,6 +141,7 @@ my $recipe = Recipe->new(
     warmup_time_override => $gc{'warmup_time_override'},
     is_target_ssd        => $gc{'is_target_ssd'},
     start_on_step        => $gc{'start_on_step'},
+    stop_on_step         => $gc{'stop_on_step'},
 );
 
 my $num_steps = $recipe->get_num_steps();

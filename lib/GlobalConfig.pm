@@ -76,6 +76,7 @@ sub init(@)
     my $keep_logman_raw = 0;
     my $force_ssd = 0;
     my $start_on_step = 1;
+    my $stop_on_step;
 
     GetOptionsFromArray(
         \@args,
@@ -107,6 +108,7 @@ sub init(@)
         "keep_logman_raw!"       => \$keep_logman_raw,
         "force_ssd!"             => \$force_ssd,
         "start_on_step=i"        => \$start_on_step,
+        "stop_on_step=i"         => \$stop_on_step,
     ) 
     or exit( -1 ); 
 
@@ -333,6 +335,7 @@ END
         keep_logman_raw         => $keep_logman_raw,
         force_ssd               => $force_ssd,
         start_on_step           => $start_on_step,
+        stop_on_step            => $stop_on_step,
     );
 }
 

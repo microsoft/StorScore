@@ -87,6 +87,13 @@ has 'start_on_step' => (
     default => 1
 );
 
+has 'stop_on_step' => (
+    is      => 'ro',
+    isa     => 'Maybe[Int]',
+    writer  => '_stop_on_step',
+    default => undef
+);
+
 has 'test_time_override' => (
     is      => 'ro',
     isa     => 'Maybe[Int]',
@@ -508,6 +515,9 @@ sub BUILD
         permissive_perl => 1,
         callback        => sub { push @{$self->steps}, {@_}; }
     );
+    
+    $self->_stop_on_step( $self->get_num_steps )
+        unless defined $self->stop_on_step;
 }
 
 sub get_time_message
@@ -687,8 +697,11 @@ sub run
         permissive_perl => 0,
         callback => sub
         { 
-            $self->run_step( {@_} ) 
-                unless $self->current_step < $self->start_on_step; 
+            unless( ($self->current_step < $self->start_on_step) or
+                    ($self->current_step > $self->stop_on_step) )
+            {
+                $self->run_step( {@_} );
+            }
         }
     );
 
