@@ -103,4 +103,10 @@ $device_db{'NVMe SAMSUNG MZ1WV480'} =
     'Rated PE Cycles'             => 18000,
 };
 
+$device_db{'NVMe Samsung SSD PM95'} = 
+{
+    # ISSUE-REVIEW: should we say 480 or 512 here?
+    'Friendly Name'               => 'Samsung PM951 480GB',
+};
+
 1;
