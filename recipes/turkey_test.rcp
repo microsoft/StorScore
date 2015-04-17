@@ -28,4 +28,3 @@
 
 include 'turkey_test_part1.rcp';
 include 'turkey_test_part2.rcp';
-include 'targeted_tests.rcp';
