@@ -35,78 +35,94 @@ use Util;
 
 $device_db{'SAMSUNG MZ7TE480HMHP-00003'} =
 {
-    'Friendly Name'               => 'Samsung PM853 480GB',
-    'Rated PE Cycles'             => 3000,
+    'Friendly Name'   => 'Samsung PM853 480GB',
+    'Rated PE Cycles' => 3000,
 };
 
 # ISSUE-REVIEW: Oddly generic device model on recent PM853 samples
 $device_db{'SAMSUNG SATA SSD'} =
 {
-    'Friendly Name'               => 'Samsung PM853 480GB',
-    'Rated PE Cycles'             => 3000,
+    'Friendly Name'   => 'Samsung PM853 480GB',
+    'Rated PE Cycles' => 3000,
 };
 
 $device_db{'SAMSUNG MZ7TE960HMHP-00003'} = 
 {
-    'Friendly Name'               => 'Samsung PM853 960GB',
-    'Rated PE Cycles'             => 3000,
+    'Friendly Name'   => 'Samsung PM853 960GB',
+    'Rated PE Cycles' => 3000,
 };
 
 $device_db{'SAMSUNG MZ7WD480HAGM-00003'} =
 {
-    'Friendly Name'               => 'Samsung SM843T 21nm 480GB',
-    'Rated PE Cycles'             => 18000,
+    'Friendly Name'   => 'Samsung SM843T 21nm 480GB',
+    'Rated PE Cycles' => 18000,
 };
 
 $device_db{'SAMSUNG MZ7WD480HCGM-000MV'} =
 {
-    'Friendly Name'               => 'Samsung SM843Tn 19nm 480GB',
+    'Friendly Name' => 'Samsung SM843Tn 19nm 480GB',
     # Version DXM91MT6 firmware only?
     'Host Writes'   =>
     {
-        'Attribute'       => 241,
-        'Unit'            => BYTES_PER_SECTOR,
+        'Attribute' => 241,
+        'Unit'      => BYTES_PER_SECTOR,
     },
     'Controller Writes' =>
     {
         'Attribute' => 243,
         'Unit'      => BYTES_PER_SECTOR,
     },
-    'Rated PE Cycles'             => 18000,
+    'Rated PE Cycles' => 18000,
 };
 
 $device_db{'SAMSUNG MZ7WD960HAGP-00003'} = 
 {
-    'Friendly Name'               => 'Samsung SM843T 21nm 960GB',
-    'Rated PE Cycles'             => 18000,
+    'Friendly Name'   => 'Samsung SM843T 21nm 960GB',
+    'Rated PE Cycles' => 18000,
 };
 
 $device_db{'SAMSUNG MZ7WD960HMHP-000MV'} = 
 {
-    'Friendly Name'               => 'Samsung SV843 960GB',
+    'Friendly Name' => 'Samsung SV843 960GB',
     'Host Writes'   =>
     {
-        'Attribute'       => 241,
-        'Unit'            => BYTES_PER_SECTOR,
+        'Attribute' => 241,
+        'Unit'      => BYTES_PER_SECTOR,
     },
     'Controller Writes' =>
     {
         'Attribute' => 243,
         'Unit'      => BYTES_PER_SECTOR,
     },
-    'Rated PE Cycles'             => 35000,
+    'Rated PE Cycles' => 35000,
 };
 
 $device_db{'NVMe SAMSUNG MZ1WV480'} = 
 {
-    'Friendly Name'               => 'Samsung SM953 480GB',
-    'Rated PE Cycles'             => 18000,
+    'Friendly Name'   => 'Samsung SM953 480GB',
+    'Rated PE Cycles' => 18000,
 };
 
 $device_db{'NVMe Samsung SSD PM95'} = 
 {
     # ISSUE-REVIEW: should we say 480 or 512 here?
-    'Friendly Name'               => 'Samsung PM951 480GB',
+    'Friendly Name' => 'Samsung PM951 480GB',
+};
+
+$device_db{'SAMSUNG MZ7KM960HAHP-00005'} = 
+{
+    'Friendly Name' => 'Samsung SM863 960GB',
+    'Host Writes'   =>
+    {
+        'Attribute' => 241,
+        'Unit'      => BYTES_PER_SECTOR,
+    },
+    'Controller Writes' =>
+    {
+        'Attribute' => 243,
+        'Unit'      => BYTES_PER_SECTOR,
+    },
+    'Rated PE Cycles' => 35000,
 };
 
 1;
