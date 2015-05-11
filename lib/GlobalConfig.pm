@@ -66,6 +66,7 @@ sub init(@)
     my $active_range = 100;
     my $partition_bytes;
     my $demo_mode = 0;
+    my $auto_upload = 1;
     my $results_share;
     my $results_share_user;
     my $results_share_pass;
@@ -98,6 +99,7 @@ sub init(@)
         "active_range=i"         => \$active_range,
         "partition_bytes=i"      => \$partition_bytes,
         "demo_mode!"             => \$demo_mode,
+        "auto_upload!"           => \$auto_upload,
         "results_share=s"        => \$results_share,
         "results_share_user=s"   => \$results_share_user,
         "results_share_pass=s"   => \$results_share_pass,

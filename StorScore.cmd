@@ -341,7 +341,7 @@ $recipe->run(
     power           => $power
 );
     
-if( defined $gc{'results_share'} )
+if( $gc{'auto_upload'} and defined $gc{'results_share'} )
 {
     print "Attempting upload to results share...";
 
