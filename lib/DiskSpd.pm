@@ -272,6 +272,15 @@ my @extract_rules =
         ]
     },
     {
+        match => qr/95th $pct_table_pat/,
+        store => 
+        [
+            '95th Percentile Read',
+            '95th Percentile Write',
+            '95th Percentile Total'
+        ]
+    },
+    {
         match => qr/99th $pct_table_pat/,
         store => 
         [
