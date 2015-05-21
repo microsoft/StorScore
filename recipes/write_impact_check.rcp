@@ -26,7 +26,23 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-include 'smart_check.rcp';
-include 'flush_check.rcp';
-include 'compress_check.rcp';
-include 'write_impact_check.rcp';
+sub do_workload($)
+{
+    my $name_string = shift;
+
+    test(
+        name_string         => $name_string, 
+        write_percentage    => 0, 
+        access_pattern      => 'random',
+        block_size          => '8K',
+        queue_depth         => 4,
+        warmup_time         => 60,
+        run_time            => 3600
+    ); 
+}
+
+do_workload( "Targeted Test Write Impact Baseline" );
+
+bg_exec( "write_slowly.cmd $gc{'target_file'}" );
+do_workload( "Targeted Test Write Impact" );
+bg_killall();
