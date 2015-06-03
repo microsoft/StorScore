@@ -109,6 +109,11 @@ $device_db{'NVMe Samsung SSD PM95'} =
     'Friendly Name' => 'Samsung PM951 480GB',
 };
 
+$device_db{'NVMe SAMSUNG MZ1LV960'} = 
+{
+    'Friendly Name'   => 'Samsung PM953 960GB',
+};
+
 $device_db{'SAMSUNG MZ7KM960HAHP-00005'} = 
 {
     'Friendly Name' => 'Samsung SM863 960GB',

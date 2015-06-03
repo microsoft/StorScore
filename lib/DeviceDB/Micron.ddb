@@ -84,6 +84,13 @@ $device_db{'Micron_M500_MTFDDAK480MAV'} =
     }
 };
 
+$device_db{'XK0480GDQPH'} =
+{
+    'Friendly Name'               => 'Micron M500 480GB (HP)',
+    'Rated PE Cycles'             => 3000,
+    # Are the WAF counters exposed by the HP firmware?
+};
+
 $device_db{'Micron_M500_MTFDDAK960MAV'} =
 {
     'Friendly Name'               => 'Micron M500 960GB',
@@ -122,8 +129,8 @@ $device_db{'Micron_M500DC_MTFDDAK480MBB'} =
 $device_db{'Micron_M500DC_MTFDDAK800MBB'} =
 {
     # Version 2814 firmware only?
-    'Friendly Name'     => 'Micron M500 DC 800GB',
-    'Rated PE Cycles'   => 5000,
+    'Friendly Name' => 'Micron M500 DC 800GB',
+    'Rated PE Cycles' => 5000,
     'Host Writes'   =>
     {
         'Attribute' => 247,
@@ -141,6 +148,22 @@ $device_db{'C400-MTFDDAK512MAM'} =
 {
     'Friendly Name'               => 'Micron C400 512GB',
     'Rated PE Cycles'             => 3000,
+};
+
+$device_db{'MICRON_M510DC_EEFDDAK480MBP'} =
+{
+    'Friendly Name' => 'Micron M510 DC 480GB',
+    'Host Writes' =>
+    {
+        'Attribute' => 247,
+        'Unit'      => 32 * BYTES_PER_SECTOR,
+    },
+    'Controller Writes' =>
+    {
+        'Attribute' => 248,
+        'Unit'      => 32 * BYTES_PER_SECTOR,
+        'Additive'  => 1,
+    }
 };
 
 1;
