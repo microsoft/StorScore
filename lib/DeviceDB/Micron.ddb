@@ -166,4 +166,20 @@ $device_db{'MICRON_M510DC_EEFDDAK480MBP'} =
     }
 };
 
+$device_db{'MICRON_M510DC_MTFDDAK960MBP'} =
+{
+    'Friendly Name' => 'Micron M510 DC 960GB',
+    'Host Writes' =>
+    {
+        'Attribute' => 247,
+        'Unit'      => 32 * BYTES_PER_SECTOR,
+    },
+    'Controller Writes' =>
+    {
+        'Attribute' => 248,
+        'Unit'      => 32 * BYTES_PER_SECTOR,
+        'Additive'  => 1,
+    }
+};
+
 1;

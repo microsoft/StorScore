@@ -81,4 +81,22 @@ $device_db{'Marvell AltaPlus R2.2'} =
     }
 };
 
+# ISSUE-REVIEW: Suspicious device model name
+$device_db{'SKHMS SSD PEARLNULL'} =
+{
+    'Friendly Name'     => 'SK Hynix SE3010 480GB',
+    'Rated PE Cycles'   => 3000,
+    'Host Writes'   =>
+    {
+        'Attribute' => 241,
+        'Unit'      => BYTES_PER_GB_BASE2,
+    },
+    'Controller Writes' =>
+    {
+        'Attribute' => 234,
+        'Unit'      => BYTES_PER_GB_BASE2,
+    }
+};
+
+
 1;

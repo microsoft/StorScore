@@ -130,4 +130,20 @@ $device_db{'SAMSUNG MZ7KM960HAHP-00005'} =
     'Rated PE Cycles' => 35000,
 };
 
+$device_db{'SAMSUNG MZ7LM960HCHP-00003'} = 
+{
+    'Friendly Name'   => 'Samsung PM863 960GB',
+    'Host Writes'   =>
+    {
+        'Attribute' => 241,
+        'Unit'      => BYTES_PER_SECTOR,
+    },
+    'Controller Writes' =>
+    {
+        'Attribute' => 243,
+        'Unit'      => BYTES_PER_SECTOR,
+    },
+    'Rated PE Cycles' => 3000,
+};
+
 1;
