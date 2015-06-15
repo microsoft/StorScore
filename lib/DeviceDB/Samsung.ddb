@@ -140,10 +140,10 @@ $device_db{'SAMSUNG MZ7LM960HCHP-00003'} =
     },
     'Controller Writes' =>
     {
-        'Attribute' => 243,
+        'Attribute' => 251,
         'Unit'      => BYTES_PER_SECTOR,
     },
-    'Rated PE Cycles' => 3000,
+    'Rated PE Cycles' => 7000,
 };
 
 1;
