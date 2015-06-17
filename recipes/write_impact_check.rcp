@@ -41,8 +41,12 @@ sub do_workload($)
     ); 
 }
 
-do_workload( "Targeted Test Write Impact Baseline" );
+# ISSUE-REVIEW: This could be made to work w/raw_disk if its ever important
+unless( $gc{'raw_disk'} )
+{
+    do_workload( "Targeted Test Write Impact Baseline" );
 
-bg_exec( "write_slowly.cmd $gc{'target_file'}" );
-do_workload( "Targeted Test Write Impact" );
-bg_killall();
+    bg_exec( "write_slowly.cmd $gc{'target_file'}" );
+    do_workload( "Targeted Test Write Impact" );
+    bg_killall();
+}
