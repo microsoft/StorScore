@@ -33,6 +33,12 @@ use warnings;
 use DeviceDB;
 use Util;
 
+$device_db{'NVMe f16s_2048h4x4'} =
+{
+    'Rated PE Cycles'   => 15000,
+    'Friendly Name'     => 'SK Hynix SE3011 960GB',
+};
+
 $device_db{'HFS480G32MNB-2000A'} =
 {
     'Friendly Name'     => 'SK Hynix SH921 480GB',

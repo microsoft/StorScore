@@ -60,7 +60,7 @@ $device_db{'INTEL SSDSC2BW480A4'} =
 
 $device_db{'INTEL SSDSC2BX480G4'} = 
 {
-    'Friendly Name'               => 'Intel SD S3610 480GB',
+    'Friendly Name'               => 'Intel DC S3610 480GB',
 };
 
 1;
