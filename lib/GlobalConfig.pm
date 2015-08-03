@@ -326,6 +326,7 @@ END
         active_range            => $active_range,
         partition_bytes         => $partition_bytes,
         demo_mode               => $demo_mode,
+        auto_upload             => $auto_upload,
         output_dir              => $output_dir,
         results_share           => $results_share,
         results_share_user      => $results_share_user,
