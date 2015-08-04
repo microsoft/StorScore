@@ -41,11 +41,11 @@ sub do_workload($)
     ); 
 }
     
-unless( $gc{'raw_disk'} )
+unless( $cmd_line->raw_disk )
 {
     do_workload( "Targeted Test Write Baseline" );
 
-    my $drive_letter = $gc{'target_volume'};
+    my $drive_letter = $target->volume;
     $drive_letter =~ s/://;
 
     bg_exec( "sync_loop.cmd $drive_letter" );

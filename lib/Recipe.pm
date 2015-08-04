@@ -314,7 +314,7 @@ sub generate_header($$$)
 
     my $header = <<"HEADER";
         package $package;
-        use GlobalConfig; # Allows access to %gc
+        use SharedVariables;
         use Util;         # Allows access to by_human, etc
 HEADER
 
@@ -410,16 +410,10 @@ sub execute_recipe
 
     $eval_string .= $self->recipe_string;
    
-    # Make %gc read-only for the recipes
-    GlobalConfig::lock();
-
     # Eval recipe code with our hooks installed
     my $retval = eval( $eval_string );
     die $EVAL_ERROR unless defined $retval;
     
-    # Restore mutability to %gc
-    GlobalConfig::unlock();
-
     # Restore cwd 
     chdir( $previous_cwd );
 
@@ -586,6 +580,11 @@ sub run_step
     my $step_ref = shift;
 
     my $kind = $step_ref->{'kind'};
+
+    # TODO: SECURE ERASE 
+    #
+    # In the future when we support SECURE ERASE, here we will add: 
+    #    $target->prepare() if $target->is_ssd();
 
     if( $kind eq 'test' and $self->do_precondition )
     {

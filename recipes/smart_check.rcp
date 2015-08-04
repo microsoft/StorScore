@@ -41,7 +41,7 @@ sub do_workload($)
     ); 
 }
 
-if( $gc{'smart_supported'} )
+if( $target->supports_smart )
 {
     do_workload( "Targeted Test Read Baseline" );
 
@@ -49,7 +49,7 @@ if( $gc{'smart_supported'} )
     do_workload( "Targeted Test SMART Return Status" );
     bg_killall();
 
-    bg_exec( "smart_loop.cmd $gc{'target_physicaldrive'}" );
+    bg_exec( "smart_loop.cmd " . $target->physical_drive );
     do_workload( "Targeted Test SMART Read Data " );
     bg_killall();
 }

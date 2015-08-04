@@ -1,5 +1,3 @@
-# vim: set filetype=perl:
-
 # StorScore
 #
 # Copyright (c) Microsoft Corporation
@@ -26,25 +24,22 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-require 'matrix.rpm';
+package SharedVariables;
 
-my @block_sizes;
+use strict;
+use warnings;
 
-if( $target->is_ssd )
-{
-    # ISSUE-REVIEW: I guess we think 8K is important only for SSD?
-    @block_sizes = qw( 2M 8K 4K );
-}
-else
-{
-    @block_sizes = qw( 2M 4K );
-}
+use Exporter;
+use vars qw(@ISA @EXPORT);
 
-do_matrix(
-    access_patterns     => [qw( sequential random )],
-    write_percentages   => [qw( 100 30 0 )],
-    block_sizes         => \@block_sizes, 
-    queue_depths        => [qw( 256 1 )],
-    warmup_time         => 60,
-    run_time            => 3600
-);
+# Declare variables here with "our" and export them, in order to
+# share them between the main StorScore.cmd script and the recipe, 
+# which is dynamically-loaded and evaluated in Recipe.pm. --MAS
+
+our $cmd_line;
+our $target;
+
+@ISA = qw(Exporter);
+@EXPORT = qw( $cmd_line $target );
+
+1;

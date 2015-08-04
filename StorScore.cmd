@@ -58,7 +58,8 @@ use lib "$FindBin::Bin";
 use lib "$FindBin::Bin\\lib";
 
 use Util;
-use GlobalConfig;
+use CommandLine;
+use Target;
 use PreconditionRunner;
 use SmartCtlRunner;
 use Recipe;
@@ -67,44 +68,25 @@ use Sqlio;
 use LogmanRunner;
 use Power;
 use WmicRunner;
+use SharedVariables;
 
 check_system_compatibility();
 
 mkdir( $results_dir ) unless( -d $results_dir );
 
-GlobalConfig::init( @ARGV ); # create %gc hash
+# See declarations in SharedVariables.pm
+$cmd_line = CommandLine->new( argv => \@ARGV );
+$target = $cmd_line->target;
 
-my $smartctl_runner = SmartCtlRunner->new(
-    pdnum      => $gc{'target_physicaldrive'},
-    output_dir => $gc{'output_dir'}
-);
+my $output_dir = "$results_dir\\" . $cmd_line->test_id;
 
-$gc{'smart_supported'} = $smartctl_runner->is_functional();
-
-my $target_model = get_drive_model( $gc{'target_physicaldrive'} );
-
-if( ( $gc{'smart_supported'} and $smartctl_runner->is_target_ssd() ) or
-    ( $target_model =~ /NVMe|SSD/ ) or
-    ( $gc{'force_ssd'} ) )
+if( $target->is_ssd )
 {
-    $gc{'is_target_ssd'} = 1;
-}
-else
-{
-    $gc{'is_target_ssd'} = 0;
-}
+    print "Targeting SSD: " . $target->model . "\n";
 
-# Precondition automatically when targeting ssd, unless
-# the user specified --precondition or --noprecondition
-$gc{'precondition'} //= $gc{'is_target_ssd'};
-
-if( $gc{'is_target_ssd'} )
-{
-    print "Targeting SSD: $target_model\n";
-
-    if( $gc{'smart_supported'} and 
-        $smartctl_runner->is_target_sata() and
-        !$smartctl_runner->is_target_6Gbps_sata() )
+    if( $target->supports_smart and 
+        $target->is_sata and
+        !$target->is_6Gbps_sata )
     {
         my $msg;
 
@@ -114,34 +96,25 @@ if( $gc{'is_target_ssd'} )
 
         warn $msg;
     }
-   
-    $gc{'recipe'} = 'recipes\\turkey_test.rcp'
-        unless defined $gc{'recipe'};
 }
 else
 {
-    print "Targeting HDD: $target_model\n";
-    
-    $gc{'recipe'} = 'recipes\\corners.rcp'
-        unless defined $gc{'recipe'};
+    print "Targeting HDD: " . $target->model . "\n";
 }
-
-undef $smartctl_runner
-    unless $gc{'collect_smart'} and $gc{'smart_supported'};
 
 print "\n";
 
 my $recipe = Recipe->new(
-    file_name            => $gc{'recipe'},
-    do_initialize        => $gc{'initialize'},
-    do_precondition      => $gc{'precondition'},
-    io_generator_type    => $gc{'io_generator'},
-    demo_mode            => $gc{'demo_mode'},
-    test_time_override   => $gc{'test_time_override'},
-    warmup_time_override => $gc{'warmup_time_override'},
-    is_target_ssd        => $gc{'is_target_ssd'},
-    start_on_step        => $gc{'start_on_step'},
-    stop_on_step         => $gc{'stop_on_step'},
+    file_name            => $cmd_line->recipe,
+    do_initialize        => $cmd_line->initialize,
+    do_precondition      => $cmd_line->precondition,
+    io_generator_type    => $cmd_line->io_generator,
+    demo_mode            => $cmd_line->demo_mode,
+    test_time_override   => $cmd_line->test_time_override,
+    warmup_time_override => $cmd_line->warmup_time_override,
+    is_target_ssd        => $target->is_ssd,
+    start_on_step        => $cmd_line->start_on_step,
+    stop_on_step         => $cmd_line->stop_on_step,
 );
 
 my $num_steps = $recipe->get_num_steps();
@@ -149,131 +122,91 @@ my $num_tests = $recipe->get_num_test_steps();
 
 die "Empty recipe. Nothing to do.\n" unless $num_steps > 0;
 
-print "Loaded $gc{'recipe'} ($num_tests tests, $num_steps steps)\n\n";
+print "Loaded " . $cmd_line->recipe;
+print " ($num_tests tests, $num_steps steps)\n\n";
 
 $recipe->warn_expected_run_time();
 
 detect_scep_and_warn();
 
-if( $gc{'clean_disk'} ) 
+if( $target->must_clean_disk ) 
 {
     my $msg;
 
     $msg .= "\tWarning!\n";
     $msg .= "\tThis will destroy \\\\.\\PHYSICALDRIVE";
-    $msg .= "$gc{'target_physicaldrive'}\n\n";
+    $msg .= $target->physical_drive . "\n\n";
 
     warn $msg;
 }
-elsif( defined $gc{'target_file'} and
-    ( $gc{'initialize'} or $recipe->contains_writes() ) )
+elsif( defined $target->file_name and
+    ( $cmd_line->initialize or $recipe->contains_writes ) )
 {
-    die "Target is not writable\n" unless -w $gc{'target_file'};
+    die "Target is not writable\n" unless -w $target->file_name;
 
     my $msg;
 
     $msg .= "\tWarning!\n";
-    $msg .= "\tThis will destroy $gc{'target_file'}\n\n";
+    $msg .= "\tThis will destroy ";
+    $msg .= $target->file_name . "\n\n";
 
     warn $msg;
 }
 
 exit 0 unless should_proceed();
 
-die "Results subdirectory $gc{'output_dir'} already exists!\n"
-    if -e $gc{'output_dir'};
+die "Results subdirectory $output_dir already exists!\n"
+    if -e $output_dir;
 
 my $overall_start = time();
 
-mkdir( $gc{'output_dir'} );
+mkdir( $output_dir );
 
-if( $gc{'clean_disk'} )
-{
-    print "Cleaning disk...\n";
+# TODO: SECURE ERASE
+#
+# In the future when we support SECURE ERASE, the line below 
+# should change to be conditional, like this:
+#    $target->prepare() if $target->is_hdd();
 
-    clean_disk( $gc{'target_physicaldrive'} );
-}
+$target->prepare();
 
-if( $gc{'create_new_filesystem'} )
-{
-    print "Creating new filesystem...\n";
-
-    create_filesystem(
-        $gc{'target_physicaldrive'},
-        $gc{'partition_bytes'}
-    );
-
-    $gc{'target_volume'} =
-    physicaldrive_to_volume( $gc{'target_physicaldrive'} );
-}
-
-if( $gc{'create_new_file'} )
-{
-    print "Creating test file...\n";
-
-    my $free_bytes = get_volume_free_space( $gc{'target_volume'} );
-
-    die "Couldn't determine free space"
-    unless defined $free_bytes;
-
-    # Reserve 1GB right off the top.
-    # When we tried to use the whole drive, we saw odd errors.
-    # Expectation is that test results should still be valid. 
-    my $size = $free_bytes - BYTES_PER_GB_BASE2;
-
-    # Support testing less then 100% of the disk
-    $size = int( $size * $gc{'active_range'} / 100 );
-
-    # Round to an even increment of 2MB.
-    # Idea is to ensure the file size is an even multiple 
-    # of pretty much any block size we might test. 
-    $size = int( $size / BYTES_IN_2MB ) * BYTES_IN_2MB;
-
-    $gc{'target_file'} = "$gc{'target_volume'}\\$TEST_FILE_NAME";
-
-    if( -e $gc{'target_file'} and not $pretend )
-    {
-        die "Error: target file $gc{'target_file'} exists!\n";
-    }
-
-    fast_create_file( $gc{'target_file'}, $size ) 
-        or die "Couldn't create $size byte file: $gc{'target_file'}\n";
-}
-
-if( $gc{'target_volume'} )
-{
-    print "Syncing target volume...\n";
-    execute_task( "sync.cmd $gc{'target_volume'}", quiet => 1 );
-}
-
-write_version_file( $gc{'output_dir'} );
+write_version_file( $output_dir );
 
 my $wmic_runner = WmicRunner->new(
-    pdnum      => $gc{'target_physicaldrive'},
-    volume     => $gc{'target_volume'},
-    output_dir => $gc{'output_dir'}
+    pdnum      => $target->physical_drive,
+    volume     => $target->volume,
+    output_dir => $output_dir
 );
 
 $wmic_runner->collect( 'wmic.txt' );
 
-$smartctl_runner->collect(
-    file_name   => "smart.txt",
-    do_identify => 1
-) 
-if defined $smartctl_runner; 
+my $smartctl_runner = undef;
+
+if( $cmd_line->collect_smart and $target->supports_smart )
+{
+    $smartctl_runner = SmartCtlRunner->new(
+        pdnum      => $target->physical_drive,
+        output_dir => $output_dir
+    );
+
+    $smartctl_runner->collect(
+        file_name   => "smart.txt",
+        do_identify => 1
+    ) 
+}
 
 my $logman_runner = LogmanRunner->new(
-    raw_disk      => $gc{'raw_disk'},
-    pdnum         => $gc{'target_physicaldrive'},
-    volume        => $gc{'target_volume'},
-    output_dir    => $gc{'output_dir'},
-    keep_raw_file => $gc{'keep_logman_raw'}
+    raw_disk      => $cmd_line->raw_disk,
+    pdnum         => $target->physical_drive,
+    volume        => $target->volume,
+    output_dir    => $output_dir,
+    keep_raw_file => $cmd_line->keep_logman_raw
 ) 
-if $gc{'collect_logman'};
+if $cmd_line->collect_logman;
         
-if( $gc{'collect_smart'} )
+if( $cmd_line->collect_smart )
 {
-    if( $gc{'smart_supported'} )
+    if( $target->supports_smart )
     {
         print "Collecting SMART counters via SmartCtl.\n";
     }
@@ -285,9 +218,9 @@ if( $gc{'collect_smart'} )
 
 my $power;
 
-if( $gc{'collect_power'} )
+if( $cmd_line->collect_power )
 {
-    $power = Power->new( output_dir => $gc{'output_dir'} );
+    $power = Power->new( output_dir => $output_dir );
 
     if( $power->is_functional() )
     {
@@ -301,16 +234,16 @@ if( $gc{'collect_power'} )
 }
 
 my $pc = PreconditionRunner->new(
-    raw_disk        => $gc{'raw_disk'},
-    pdnum           => $gc{'target_physicaldrive'},
-    volume          => $gc{'target_volume'},
-    target_file     => $gc{'target_file'},
-    output_dir      => $gc{'output_dir'},
-    demo_mode       => $gc{'demo_mode'},
-    is_target_ssd   => $gc{'is_target_ssd'}
+    raw_disk        => $cmd_line->raw_disk,
+    pdnum           => $target->physical_drive,
+    volume          => $target->volume,
+    target_file     => $target->file_name,
+    output_dir      => $output_dir,
+    demo_mode       => $cmd_line->demo_mode,
+    is_target_ssd   => $target->is_ssd
 );
 
-if( $gc{'initialize'} )
+if( $cmd_line->initialize )
 {
     $pc->initialize();
 }
@@ -320,19 +253,20 @@ else
 }
 
 my %iogen_args = (
-    raw_disk     => $gc{'raw_disk'},
-    pdnum        => $gc{'target_physicaldrive'},
-    target_file  => $gc{'target_file'},
-    extra_args   => $gc{'io_generator_args'},
-    output_dir   => $gc{'output_dir'},
-    default_comp => $gc{'compressibility'},
+    raw_disk     => $cmd_line->raw_disk,
+    pdnum        => $target->physical_drive,
+    target_file  => $target->file_name,
+    extra_args   => $cmd_line->io_generator_args,
+    output_dir   => $output_dir,
+    default_comp => $cmd_line->compressibility
 );
 
 my $iogen;
-$iogen = Sqlio->new( %iogen_args ) if $gc{'io_generator'} =~ 'sqlio';
-$iogen = DiskSpd->new( %iogen_args ) if $gc{'io_generator'} =~ 'diskspd';
+$iogen = Sqlio->new( %iogen_args ) if $cmd_line->io_generator =~ 'sqlio';
+$iogen = DiskSpd->new( %iogen_args ) if $cmd_line->io_generator =~ 'diskspd';
 
 print "Testing...\n";
+
 $recipe->run(
     preconditioner  => $pc,
     io_generator    => $iogen,
@@ -341,7 +275,7 @@ $recipe->run(
     power           => $power
 );
     
-if( $gc{'auto_upload'} and defined $gc{'results_share'} )
+if( $cmd_line->auto_upload and defined $cmd_line->results_share )
 {
     print "Attempting upload to results share...";
 
@@ -362,11 +296,11 @@ exit( 0 );
 
 sub upload_results
 {
-    my $src = $gc{'output_dir'};
-    my $share = $gc{'results_share'};
-    my $dst = "$share\\results\\$gc{'test_id'}";
-    my $user = $gc{'results_share_user'};
-    my $pass = $gc{'results_share_pass'}; 
+    my $src = $output_dir;
+    my $share = $cmd_line->results_share;
+    my $dst = "$share\\results\\" . $cmd_line->test_id;
+    my $user = $cmd_line->results_share_user;
+    my $pass = $cmd_line->results_share_pass;
 
     my $nu_cmd = "net use $share";
     $nu_cmd .= " $pass" if defined $pass;

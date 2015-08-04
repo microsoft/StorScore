@@ -197,33 +197,6 @@ sub BUILD
     $self->_sata_version( $stats{'SATA Version'} );
 }
 
-
-sub is_target_ssd()
-{
-    my $self = shift;
-
-    return 1 if $self->rotation_rate =~ /Solid State Device/;
-    return 0;
-}
-
-sub is_target_sata
-{
-    my $self = shift;
-
-    return 1 if defined $self->sata_version;
-    return 0;
-}
-
-sub is_target_6Gbps_sata
-{
-    my $self = shift;
-
-    return 0 unless defined $self->sata_version;
-    return 1 if $self->sata_version =~ /current: 6\.0 Gb\/s/;
-    return 0;
-}
-
 no Moose;
 __PACKAGE__->meta->make_immutable;
-
 1;

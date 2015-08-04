@@ -94,11 +94,11 @@ use vars qw(@ISA @EXPORT);
     is_process_running
     detect_scep_and_warn
     volume_to_partition
-    partition_to_physicaldrive
-    volume_to_physicaldrive
-    physicaldrive_to_partition
+    partition_to_physical_drive
+    volume_to_physical_drive
+    physical_drive_to_partition
     partition_to_volume
-    physicaldrive_to_volume
+    physical_drive_to_volume
     seconds_to_human
     ltrim
     rtrim
@@ -528,8 +528,8 @@ sub volume_to_partition($)
     return $1;
 }
 
-# ISSUE-REVIEW: what about partitions which span multiple physicaldrives?
-sub partition_to_physicaldrive($)
+# ISSUE-REVIEW: what about partitions which span multiple physical_drives?
+sub partition_to_physical_drive($)
 {
     my $partition = shift;
 
@@ -546,17 +546,17 @@ sub partition_to_physicaldrive($)
     return $1;
 }
 
-sub volume_to_physicaldrive($)
+sub volume_to_physical_drive($)
 {
     my $vol = shift;
     
     my $partition = volume_to_partition( $vol );
 
-    return partition_to_physicaldrive( $partition );
+    return partition_to_physical_drive( $partition );
 }
 
-# ISSUE-REVIEW: what about physicaldrives that have multiple partitions?
-sub physicaldrive_to_partition($)
+# ISSUE-REVIEW: what about physical_drives that have multiple partitions?
+sub physical_drive_to_partition($)
 {
     my $pdnum = shift;
     my $pdname = "\\\\\\\\.\\\\PHYSICALDRIVE$pdnum";
@@ -591,11 +591,11 @@ sub partition_to_volume($)
     return $1;
 }
 
-sub physicaldrive_to_volume($)
+sub physical_drive_to_volume($)
 {
     my $pdnum = shift;
     
-    my $partition = physicaldrive_to_partition( $pdnum );
+    my $partition = physical_drive_to_partition( $pdnum );
 
     return partition_to_volume( $partition );
 }

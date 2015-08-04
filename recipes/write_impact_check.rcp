@@ -42,11 +42,11 @@ sub do_workload($)
 }
 
 # ISSUE-REVIEW: This could be made to work w/raw_disk if its ever important
-unless( $gc{'raw_disk'} )
+unless( $cmd_line->raw_disk )
 {
     do_workload( "Targeted Test Write Impact Baseline" );
 
-    bg_exec( "write_slowly.cmd $gc{'target_file'}" );
+    bg_exec( "write_slowly.cmd " . $target->file_name );
     do_workload( "Targeted Test Write Impact" );
     bg_killall();
 }
