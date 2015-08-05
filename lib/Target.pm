@@ -29,6 +29,10 @@ package Target;
 use strict;
 use warnings;
 use Moose;
+use English;
+
+no if $PERL_VERSION >= 5.017011, 
+    warnings => 'experimental::smartmatch';
 
 use Util;
 use SmartCtlRunner;
@@ -45,10 +49,10 @@ has 'raw_disk' => (
     required => 1
 );
 
-has 'force_ssd' => (
+has 'override_type' => (
     is  => 'ro',
-    isa => 'Bool',
-    required => 1
+    isa => 'Maybe[Str]',
+    default => undef,
 );
 
 has 'active_range' => (
@@ -136,25 +140,32 @@ has 'must_create_new_file' => (
 sub is_ssd()
 {
     my $self = shift;
-   
-    return 1 if $self->force_ssd;
-
-    if( $self->supports_smart and 
-        $self->rotation_rate =~ /Solid State Device/ )
-    {
-        return 1;
-    }
-        
-    return 1 if $self->model =~ /NVMe|SSD/;
     
-    return 0;
+    return $self->type eq 'ssd';
 }
 
 sub is_hdd
 {
     my $self = shift;
+    
+    return $self->type eq 'hdd';
+}
 
-    return !$self->is_ssd();
+sub type
+{
+    my $self = shift;
+    
+    return $self->override_type if defined $self->override_type;
+    
+    if( $self->supports_smart and 
+        $self->rotation_rate =~ /Solid State Device/ )
+    {
+        return 'ssd';
+    }
+      
+    return 'ssd' if $self->model =~ /NVMe|SSD/i;
+    
+    return 'hdd';
 }
 
 sub is_sata
@@ -238,6 +249,12 @@ sub BUILD
         $self->_supports_smart( 1 );
         $self->_rotation_rate( $smartctl->rotation_rate );
         $self->_sata_version( $smartctl->sata_version );
+    }
+
+    if( defined $self->override_type )
+    {
+        die "Error: invalid target override type\n"
+            unless $self->override_type ~~ [qw( ssd hdd )];
     }
 }   
 

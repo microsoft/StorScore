@@ -78,7 +78,8 @@ sub run_one
     $cargs .= "--noprompt ";
     $cargs .= "--test_id=regr ";
 
-    # ISSUE-REVIEW: add --force_ssd and --force_hdd here?
+    # ISSUE-REVIEW:
+    # Do --target_type=ssd and --target_type=hdd here instead of below?
 
     # run corners
     system( "rmdir /S /Q results\\regr >NUL 2>&1" );
@@ -101,9 +102,8 @@ chdir( ".." );
 run_one( "" );
 run_one( "--noinitialize" );
 run_one( "--noprecondition" );
-run_one( "--force_ssd" );
-# ISSUE-REVIEW: uncomment once --force_hdd is supported?
-#run_one( "--force_hdd" );
+run_one( "--target_type=ssd" );
+run_one( "--target_type=hdd" );
 run_one( "--raw_disk" );
 run_one( "--active_range=50" );
 run_one( "--partition_bytes=1000000000" );

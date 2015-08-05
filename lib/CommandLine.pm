@@ -199,11 +199,11 @@ has 'keep_logman_raw' => (
     writer  => '_keep_logman_raw'
 );
 
-has 'force_ssd' => (
+has 'target_type' => (
     is  => 'ro',
-    isa => 'Bool',
-    default => 0,
-    writer  => '_force_ssd'
+    isa => 'Str',
+    default => 'auto',
+    writer  => '_target_type'
 );
 
 has 'start_on_step' => (
@@ -270,7 +270,7 @@ sub BUILD
         "collect_logman!"        => sub { $self->attr(@_) },
         "collect_power!"         => sub { $self->attr(@_) },
         "keep_logman_raw!"       => sub { $self->attr(@_) },
-        "force_ssd!"             => sub { $self->attr(@_) },
+        "target_type=s"          => sub { $self->attr(@_) },
         "start_on_step=i"        => sub { $self->attr(@_) },
         "stop_on_step=i"         => sub { $self->attr(@_) },
     ) 
@@ -309,6 +309,14 @@ END
         die "Unsupported io_generator. Use --io_generator=diskspd|sqlio\n";
     }
 
+    # Canonicalize target type to lower case
+    $self->_target_type( lc( $self->target_type ) );
+
+    unless( $self->target_type ~~ [qw( auto ssd hdd )] )
+    {
+        die "Unsupported target_type. Use --target_type=auto|ssd|hdd\n";
+    }
+    
     if( $self->raw_disk )
     {
         if( $self->active_range != 100 )
@@ -338,14 +346,18 @@ END
         $self->_test_time_override( 5 );
         $self->_warmup_time_override( 0 );
     }
-    
-    my $target = Target->new(
+   
+    my %target_args = (
         target_str      => $target_str,
         raw_disk        => $self->raw_disk,
-        force_ssd       => $self->force_ssd,
         active_range    => $self->active_range,
         partition_bytes => $self->partition_bytes,
     );
+        
+    $target_args{'override_type'} = $self->target_type
+        unless $self->target_type eq 'auto';
+
+    my $target = Target->new( %target_args );
     
     $self->_target( $target );
   
@@ -449,7 +461,7 @@ OPTIONS
   --collect_logman  Collect performance counters from logman. Defaults to true.
   --collect_power   Collect system power usage statistics. Defaults to true.
   --keep_logman_raw Prevent StorScore from deleting the logman data files.
-  --force_ssd       Treat the target as an SSD, regardless of appearances.
+  --target_type     Force target type to "ssd" or "hdd". Defaults to "auto".
   --start_on_step=n Begin testing on step n of the recipe.
 
 EXAMPLES

@@ -79,10 +79,11 @@ $cmd_line = CommandLine->new( argv => \@ARGV );
 $target = $cmd_line->target;
 
 my $output_dir = "$results_dir\\" . $cmd_line->test_id;
+    
+print "Targeting " . uc( $target->type ) . ": " . $target->model . "\n";
 
 if( $target->is_ssd )
 {
-    print "Targeting SSD: " . $target->model . "\n";
 
     if( $target->supports_smart and 
         $target->is_sata and
@@ -97,11 +98,6 @@ if( $target->is_ssd )
         warn $msg;
     }
 }
-else
-{
-    print "Targeting HDD: " . $target->model . "\n";
-}
-
 print "\n";
 
 my $recipe = Recipe->new(
