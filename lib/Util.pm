@@ -59,7 +59,6 @@ use vars qw(@ISA @EXPORT);
     BYTES_PER_KB_BASE10
     BYTES_PER_SECTOR
     BYTES_IN_2MB
-    $version
     $TEST_FILE_NAME
     $script_name
     $script_dir
@@ -90,7 +89,6 @@ use vars qw(@ISA @EXPORT);
     clean_disk
     create_filesystem
     is_power_of_two
-    write_version_file
     is_process_running
     detect_scep_and_warn
     volume_to_partition
@@ -136,9 +134,6 @@ use constant BYTES_PER_KB_BASE10 => 1000;
 
 use constant BYTES_PER_SECTOR => 512;
 use constant BYTES_IN_2MB => 1024 * 1024 * 2;
-
-# TODO: Update this automatically
-our $version = "1.0";
 
 our $TEST_FILE_NAME = 'testfile.dat';
 
@@ -458,17 +453,6 @@ sub is_power_of_two($)
     return 0 if $x == 0;
 
     return ( $x & ( $x - 1 ) ) == 0;
-}
-
-sub write_version_file($)
-{
-    my $dir = shift;
-
-    open( my $FILE, ">$dir\\$script_name.ver" )
-        or die "could not open $dir\\$script_name: $!";
-
-    print $FILE "$script_name v$version\n";
-    close( $FILE );
 }
 
 sub is_process_running($)

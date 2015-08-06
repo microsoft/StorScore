@@ -166,8 +166,6 @@ mkdir( $output_dir );
 
 $target->prepare();
 
-write_version_file( $output_dir );
-
 my $wmic_runner = WmicRunner->new(
     pdnum      => $target->physical_drive,
     volume     => $target->volume,
