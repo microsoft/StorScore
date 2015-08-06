@@ -86,14 +86,14 @@ sub run_one
     # ISSUE-REVIEW:
     # Do --target_type=ssd and --target_type=hdd here instead of below?
 
+    # run default recipe 
+    my_exec(
+        "storscore.cmd $cargs $args"
+    );
+
     # run corners
     my_exec(
         "storscore.cmd $cargs $args --recipe=recipes\\corners.rcp"
-    );
-
-    # run targeted tests
-    my_exec(
-        "storscore.cmd $cargs $args --recipe=recipes\\targeted_tests.rcp"
     );
 }
 
