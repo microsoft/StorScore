@@ -78,7 +78,6 @@ sub is_binary_present()
 {
     my $missing = execute_task( 
         'where smartctl',
-        force => 1,
         quiet => 1
     );
     
@@ -109,7 +108,7 @@ sub collect
         $cmd .= "> $file_name";
     }
     
-    return execute_task( $cmd, force => 1 );
+    return execute_task( $cmd );
 }
 
 sub detect_device_type()
@@ -118,7 +117,7 @@ sub detect_device_type()
 
     my $file_name =
         mktemp( $ENV{'TEMP'} . "\\smartctl_devtypeXXXXXX" );
-   
+  
     my $detected_device_type;
 
     foreach my $try_type ( qw( ata sat scsi ) )
@@ -166,9 +165,20 @@ my @extract_rules =
 sub BUILD
 {
     my $self = shift;
+    
+    if( $pretend )
+    {
+        # Mock up a fake SATA III SSD for pretend mode
+        $self->_is_functional( 1 );
+        $self->_device_type( 'ata' );
+        $self->_rotation_rate( 'Solid State Device' );
+        $self->_sata_version( 'current: 6.0 Gb/s' );
+        
+        return;
+    }
 
     return unless( $self->is_binary_present() );
-
+    
     $self->_device_type( $self->detect_device_type() );
 
     return unless defined $self->device_type;

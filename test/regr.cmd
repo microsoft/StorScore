@@ -44,17 +44,15 @@ use English;
 my $script_name = basename( $PROGRAM_NAME );
 my $script_dir = dirname( $PROGRAM_NAME );
 
-my $target;
 my $outfile;
 
 GetOptions(
-    "target=s"  => \$target,
     "outfile=s" => \$outfile,
 );
 
-unless( defined $target and defined $outfile )
+unless( defined $outfile )
 {
-    warn "usage: $script_name --target=TGT --outfile=FILE\n";
+    warn "usage: $script_name --outfile=FILE\n";
     exit(-1);
 }
 
@@ -78,7 +76,7 @@ sub run_one
     my $args = shift;
 
     my $cargs;
-    $cargs .= "--target=$target ";
+    $cargs .= "--target=1234 ";
     $cargs .= "--pretend ";
     $cargs .= "--verbose ";
     $cargs .= "--noprompt ";

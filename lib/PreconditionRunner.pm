@@ -100,7 +100,18 @@ sub initialize()
         }
         else
         {
-            my $file_size = -s $self->target_file;
+            my $file_size;
+            
+            if( $pretend )
+            {
+                # Ficticious 42GB test file for pretend mode
+                $file_size = 42 * BYTES_PER_GB_BASE2;
+            }
+            else
+            {
+                $file_size = -s $self->target_file;
+            }
+
             $file_size > 0 or die "Target file has zero size?";
 
             my $vol_size = get_volume_size( $self->volume );

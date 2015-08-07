@@ -194,8 +194,7 @@ sub wmic_helper($)
 {
     my $wmic_cmd = shift;
 
-    my ( $errorlevel, $stdout ) =
-        execute_task( "wmic $wmic_cmd", force => 1 );
+    my ( $errorlevel, $stdout ) = execute_task( "wmic $wmic_cmd" );
 
     die "wmic failed" if $errorlevel != 0;
 
@@ -204,6 +203,8 @@ sub wmic_helper($)
 
 sub physical_drive_exists
 {
+    return 1 if $pretend; # Pretend drives always exist :)
+
     my $pdnum = shift;
     my $pdname = "\\\\\\\\.\\\\PHYSICALDRIVE$pdnum";
 
@@ -219,6 +220,9 @@ sub physical_drive_exists
 
 sub get_volume_size($)
 {
+    # Report "pretend volumes" as having 512 GB size
+    return 512 * BYTES_PER_GB_BASE10 if $pretend;
+
     my $vol = shift;
     
     my $wmic_cmd = 
@@ -231,6 +235,9 @@ sub get_volume_size($)
 
 sub get_volume_free_space($)
 {
+    # Report "pretend volumes" as having 512 GB free
+    return 512 * BYTES_PER_GB_BASE10 if $pretend;
+
     my $vol = shift;
     
     my $wmic_cmd = 
@@ -256,6 +263,8 @@ sub get_drive_size($)
 
 sub get_drive_model($)
 {
+    return 'StorScore Pretend Drive' if $pretend;
+
     my $pdnum = shift;
     my $pdname = "\\\\\\\\.\\\\PHYSICALDRIVE$pdnum";
     
@@ -542,6 +551,8 @@ sub volume_to_physical_drive($)
 # ISSUE-REVIEW: what about physical_drives that have multiple partitions?
 sub physical_drive_to_partition($)
 {
+    return 'Disk #0, Partition #0' if $pretend;
+
     my $pdnum = shift;
     my $pdname = "\\\\\\\\.\\\\PHYSICALDRIVE$pdnum";
 
@@ -560,6 +571,8 @@ sub physical_drive_to_partition($)
 
 sub partition_to_volume($)
 {
+    return 'P:' if $pretend;
+
     my $partition = shift;
 
     my $wmic_cmd;

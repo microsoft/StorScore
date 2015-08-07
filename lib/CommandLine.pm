@@ -463,7 +463,8 @@ OPTIONS
   --keep_logman_raw Prevent StorScore from deleting the logman data files.
   --target_type     Force target type to "ssd" or "hdd". Defaults to "auto".
   --start_on_step=n Begin testing on step n of the recipe.
-
+  --pretend         For testing, run without touching the target at all.
+  
 EXAMPLES
   $script_name --target=1 
   $script_name --target=Z: --recipe=recipes\\my_new_recipe.rcp
