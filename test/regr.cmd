@@ -68,24 +68,24 @@ sub run_one
 {
     my $args = shift;
 
-    my $cargs;
-    $cargs .= "--target=1234 ";
-    $cargs .= "--pretend ";
-    $cargs .= "--verbose ";
-    $cargs .= "--noprompt ";
+    my $common_args;
+    $common_args .= "--target=1234 ";
+    $common_args .= "--pretend ";
+    $common_args .= "--verbose ";
+    $common_args .= "--noprompt ";
 
-    # ISSUE-REVIEW:
-    # Do --target_type=ssd and --target_type=hdd here instead of below?
+    foreach my $target_type ( qw( auto ssd hdd error ) )
+    {
+        foreach my $recipe ( undef, 'recipes\\corners.rcp' )
+        {
+            my $cmd = "storscore.cmd $common_args ";
 
-    # run default recipe 
-    my_exec(
-        "storscore.cmd $cargs $args"
-    );
+            $cmd .= "--target_type=$target_type ";
+            $cmd .= "--recipe=$recipe " if defined $recipe;
 
-    # run corners
-    my_exec(
-        "storscore.cmd $cargs $args --recipe=recipes\\corners.rcp"
-    );
+            my_exec( "$cmd $args" );
+        }
+    }
 }
 
 unlink( $outfile );
@@ -96,15 +96,33 @@ rename( "results", "results.orig" );
 
 run_one( "" );
 run_one( "--this_flag_does_not_exist" );
+run_one( "--initialize" );
 run_one( "--noinitialize" );
+run_one( "--precondition" );
 run_one( "--noprecondition" );
-run_one( "--target_type=ssd" );
-run_one( "--target_type=hdd" );
 run_one( "--raw_disk" );
+run_one( "--active_range=0" );
+run_one( "--active_range=1" );
 run_one( "--active_range=50" );
+run_one( "--active_range=100" );
+run_one( "--active_range=110" );
 run_one( "--partition_bytes=1000000000" );
+run_one( "--partition_bytes=1000000000 --raw_disk" );
+run_one( "--demo_mode" );
 run_one( "--test_id=regr" );
 run_one( "--test_id_prefix=regr" );
+run_one( "--nocollect_smart" );
+run_one( "--nocollect_logman" );
+run_one( "--nocollect_power" );
+run_one( "--start_on_step=2" );
+run_one( "--stop_on_step=2" );
+run_one( "--test_time_override=42" );
+run_one( "--warmup_time_override=42" );
+run_one( "--compressibility=0" );
+run_one( "--compressibility=1" );
+run_one( "--compressibility=20" );
+run_one( "--compressibility=80" );
+run_one( "--compressibility=99" );
  
 # Restore original results directory
 system( "rmdir /S /Q results >NUL 2>&1" );
