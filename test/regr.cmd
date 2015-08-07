@@ -37,26 +37,19 @@ exit /B %ERRORLEVEL%
 use strict;
 use warnings;
 
-use Getopt::Long;
 use File::Basename;
 use English;
 
 my $script_name = basename( $PROGRAM_NAME );
 my $script_dir = dirname( $PROGRAM_NAME );
 
-my $outfile;
-
-GetOptions(
-    "outfile=s" => \$outfile,
-);
-
-unless( defined $outfile )
+unless( scalar @ARGV == 1 )
 {
-    warn "usage: $script_name --outfile=FILE\n";
+    warn "usage: $script_name OUTFILE\n";
     exit(-1);
 }
 
-$outfile = "$script_dir\\$outfile";
+my $outfile = "$script_dir\\$ARGV[0]";
 
 sub my_exec
 {
