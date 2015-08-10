@@ -31,7 +31,6 @@ use warnings;
 use Moose;
 use English;
 use Getopt::Long 'GetOptionsFromArray';
-use POSIX 'strftime';
 
 no if $PERL_VERSION >= 5.017011, 
     warnings => 'experimental::smartmatch';
@@ -47,7 +46,7 @@ has 'argv' => (
 
 has 'target' => (
     is  => 'ro',
-    isa => 'Maybe[Target]',
+    isa => 'Maybe[Str]',
     default => undef,
     writer  => '_target'
 );
@@ -85,6 +84,13 @@ has 'test_id' => (
     isa => 'Maybe[Str]',
     default => undef,
     writer  => '_test_id'
+);
+
+has 'test_id_prefix' => (
+    is  => 'ro',
+    isa => 'Maybe[Str]',
+    default => undef,
+    writer  => '_test_id_prefix'
 );
 
 has 'test_time_override' => (
@@ -238,13 +244,11 @@ sub BUILD
     my $self = shift;
    
     my $help = 0;
-    my $target_str;
-    my $test_id_prefix;
 
     GetOptionsFromArray(
         $self->argv,
         "help|?"                 => \$help,
-        "target=s"               => \$target_str, 
+        "target=s"               => sub { $self->attr(@_) },
         "raw_disk!"              => sub { $self->attr(@_) }, 
         "recipe=s"               => sub { $self->attr(@_) },  
         "verbose!"               => \$verbose,
@@ -253,7 +257,7 @@ sub BUILD
         "precondition!"          => sub { $self->attr(@_) },  
         "prompt!"                => \$prompt,
         "test_id=s"              => sub { $self->attr(@_) },  
-        "test_id_prefix=s"       => \$test_id_prefix,
+        "test_id_prefix=s"       => sub { $self->attr(@_) },  
         "test_time_override=i"   => sub { $self->attr(@_) },
         "warmup_time_override=i" => sub { $self->attr(@_) },
         "io_generator=s"         => sub { $self->attr(@_) },
@@ -282,7 +286,7 @@ sub BUILD
         exit( -1 );
     }
     
-    unless( defined $target_str )
+    unless( defined $self->target )
     {
         my $msg =<<'END';
 Provide a target with --target=X
@@ -346,33 +350,7 @@ END
         $self->_test_time_override( 5 );
         $self->_warmup_time_override( 0 );
     }
-   
-    my %target_args = (
-        target_str      => $target_str,
-        raw_disk        => $self->raw_disk,
-        active_range    => $self->active_range,
-        partition_bytes => $self->partition_bytes,
-    );
-        
-    $target_args{'override_type'} = $self->target_type
-        unless $self->target_type eq 'auto';
-
-    my $target = Target->new( %target_args );
-    
-    $self->_target( $target );
   
-    unless( defined $self->recipe )
-    {
-        if( $target->is_ssd )
-        {
-            $self->_recipe( 'recipes\\turkey_test.rcp' );
-        }
-        else
-        {
-            $self->_recipe( 'recipes\\corners.rcp' );
-        }
-    }
-
     if( defined $self->test_time_override )
     {
         if( $self->io_generator eq 'sqlio' 
@@ -392,29 +370,6 @@ END
         }
     }
    
-    # If no test_id was given, construct a sensible default
-    if( not defined $self->test_id )
-    {
-        my $prefix = 
-            make_legal_filename( 
-                get_drive_model( $target->physical_drive ) );
-
-        $self->_test_id(
-            "$prefix-" . strftime( "%Y-%m-%d_%H-%M-%S", localtime ) );
-    }
-
-    if( defined $test_id_prefix )
-    {
-        $self->_test_id( $test_id_prefix . $self->test_id );
-    }
-
-    # Precondition automatically when targeting ssd, unless
-    # the user specified --precondition or --noprecondition
-    unless( defined $self->precondition )
-    {
-        $self->_precondition( $target->is_ssd );
-    }
-    
     unless( defined $self->results_share )
     {
         # Automatically enable upload if running in the lab

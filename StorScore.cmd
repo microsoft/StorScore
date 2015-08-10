@@ -50,6 +50,7 @@ use warnings;
 use English;
 use Win32;
 use Time::Seconds;
+use POSIX 'strftime';
 use Carp;
 #$SIG{ __DIE__ } = sub { Carp::confess( @_ ) };
 
@@ -74,17 +75,58 @@ check_system_compatibility();
 
 mkdir( $results_dir ) unless( -d $results_dir );
 
-# See declarations in SharedVariables.pm
-$cmd_line = CommandLine->new( argv => \@ARGV );
-$target = $cmd_line->target;
+our $cmd_line = CommandLine->new( argv => \@ARGV ); # See SharedVariables.pm
 
-my $output_dir = "$results_dir\\" . $cmd_line->test_id;
+my %target_args = (
+    target_str      => $cmd_line->target,
+    raw_disk        => $cmd_line->raw_disk,
+    active_range    => $cmd_line->active_range,
+    partition_bytes => $cmd_line->partition_bytes,
+);
+
+$target_args{'override_type'} = $cmd_line->target_type
+    unless $cmd_line->target_type eq 'auto';
+
+our $target = Target->new( %target_args ); # See SharedVariables.pm
+
+my $recipe_file = $cmd_line->recipe;
+    
+unless( defined $recipe_file )
+{
+    if( $target->is_ssd )
+    {
+        $recipe_file = 'recipes\\turkey_test.rcp';
+    }
+    else
+    {
+        $recipe_file = 'recipes\\corners.rcp';
+    }
+}
+
+my $output_dir = "$results_dir\\";
+    
+$output_dir .= $cmd_line->test_id_prefix
+    if defined $cmd_line->test_id_prefix;
+
+if( defined $cmd_line->test_id )
+{
+    $output_dir .= $cmd_line->test_id;
+}
+else
+{
+    # If no test_id was given, construct a sensible default
+    my $prefix = 
+        make_legal_filename( 
+            get_drive_model( $target->physical_drive ) );
+
+    $output_dir .= 
+        "$prefix-" . strftime( "%Y-%m-%d_%H-%M-%S", localtime );
+}
     
 print "Targeting " . uc( $target->type ) . ": " . $target->model . "\n";
 
 if( $target->is_ssd )
 {
-
     if( $target->supports_smart and 
         $target->is_sata and
         !$target->is_6Gbps_sata )
@@ -98,12 +140,17 @@ if( $target->is_ssd )
         warn $msg;
     }
 }
+
 print "\n";
 
+# Default behavior is to precondition to steady-state when targeting 
+# an SSD. Allow the command line to override this with --noprecondition.
+my $do_precondition = $cmd_line->precondition // $target->is_ssd;
+
 my $recipe = Recipe->new(
-    file_name            => $cmd_line->recipe,
+    file_name            => $recipe_file,
     do_initialize        => $cmd_line->initialize,
-    do_precondition      => $cmd_line->precondition,
+    do_precondition      => $do_precondition,
     io_generator_type    => $cmd_line->io_generator,
     demo_mode            => $cmd_line->demo_mode,
     test_time_override   => $cmd_line->test_time_override,
@@ -118,7 +165,7 @@ my $num_tests = $recipe->get_num_test_steps();
 
 die "Empty recipe. Nothing to do.\n" unless $num_steps > 0;
 
-print "Loaded " . $cmd_line->recipe;
+print "Loaded " . $recipe_file;
 print " ($num_tests tests, $num_steps steps)\n\n";
 
 $recipe->warn_expected_run_time();
@@ -292,7 +339,7 @@ sub upload_results
 {
     my $src = $output_dir;
     my $share = $cmd_line->results_share;
-    my $dst = "$share\\results\\" . $cmd_line->test_id;
+    my $dst = $output_dir =~ s/.*results/$share\\results/r;
     my $user = $cmd_line->results_share_user;
     my $pass = $cmd_line->results_share_pass;
 
