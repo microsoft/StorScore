@@ -123,7 +123,8 @@ run_one( "--compressibility=1" );
 run_one( "--compressibility=20" );
 run_one( "--compressibility=80" );
 run_one( "--compressibility=99" );
- 
+run_one( "--results_share=\\\\share\\dir" );
+
 # Restore original results directory
 system( "rmdir /S /Q results >NUL 2>&1" );
 rename( "results.orig", "results" );
