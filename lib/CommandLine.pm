@@ -301,7 +301,7 @@ END
  
     unless( $self->active_range > 0 and $self->active_range <= 100 )
     {
-        die "Invalid active_range. Expected a percentage between 0 and 100." 
+        die "Invalid active_range. Expected a percentage between 0 and 100.\n" 
     }
 
     unless( $self->io_generator ~~ [ 'sqlio', 'diskspd' ] )
