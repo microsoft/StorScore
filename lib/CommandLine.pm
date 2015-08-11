@@ -221,8 +221,8 @@ has 'start_on_step' => (
 
 has 'stop_on_step' => (
     is  => 'ro',
-    isa => 'Maybe[Int]',
-    default => undef,
+    isa => 'Int',
+    default => ~0, # poor man's UINT_MAX
     writer  => '_stop_on_step'
 );
 

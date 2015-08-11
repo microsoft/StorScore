@@ -78,10 +78,8 @@ mkdir( $results_dir ) unless( -d $results_dir );
 our $cmd_line = CommandLine->new( argv => \@ARGV ); # See SharedVariables.pm
 
 my %target_args = (
-    target_str      => $cmd_line->target,
-    raw_disk        => $cmd_line->raw_disk,
-    active_range    => $cmd_line->active_range,
-    partition_bytes => $cmd_line->partition_bytes,
+    target_str => $cmd_line->target,
+    cmd_line   => $cmd_line
 );
 
 $target_args{'override_type'} = $cmd_line->target_type
@@ -143,21 +141,11 @@ if( $target->is_ssd )
 
 print "\n";
 
-# Default behavior is to precondition to steady-state when targeting 
-# an SSD. Allow the command line to override this with --noprecondition.
-my $do_precondition = $cmd_line->precondition // $target->is_ssd;
-
 my $recipe = Recipe->new(
     file_name            => $recipe_file,
-    do_initialize        => $cmd_line->initialize,
-    do_precondition      => $do_precondition,
-    io_generator_type    => $cmd_line->io_generator,
-    demo_mode            => $cmd_line->demo_mode,
-    test_time_override   => $cmd_line->test_time_override,
-    warmup_time_override => $cmd_line->warmup_time_override,
-    is_target_ssd        => $target->is_ssd,
-    start_on_step        => $cmd_line->start_on_step,
-    stop_on_step         => $cmd_line->stop_on_step,
+    output_dir           => $output_dir,
+    target               => $target,
+    cmd_line             => $cmd_line
 );
 
 my $num_steps = $recipe->get_num_steps();
@@ -205,6 +193,35 @@ my $overall_start = time();
 
 mkdir( $output_dir );
 
+if( $cmd_line->collect_smart )
+{
+    if( $target->supports_smart )
+    {
+        print "Collecting SMART counters via SmartCtl.\n";
+    }
+    else
+    {
+        warn "SmartCtl missing or broken. SMART capture disabled.\n";
+    }
+}
+
+my $power;
+
+if( $cmd_line->collect_power )
+{
+    $power = Power->new( output_dir => $output_dir );
+
+    if( $power->is_functional() )
+    {
+        print "Collecting system power via IPMI.\n";
+    }
+    else
+    {
+        warn "Ipmiutil missing or broken. Power measurement disabled.\n";
+        undef $power;
+    }
+}
+
 # TODO: SECURE ERASE
 #
 # In the future when we support SECURE ERASE, the line below 
@@ -245,54 +262,6 @@ my $logman_runner = LogmanRunner->new(
 ) 
 if $cmd_line->collect_logman;
         
-if( $cmd_line->collect_smart )
-{
-    if( $target->supports_smart )
-    {
-        print "Collecting SMART counters via SmartCtl.\n";
-    }
-    else
-    {
-        warn "SmartCtl missing or broken. SMART capture disabled.\n";
-    }
-}
-
-my $power;
-
-if( $cmd_line->collect_power )
-{
-    $power = Power->new( output_dir => $output_dir );
-
-    if( $power->is_functional() )
-    {
-        print "Collecting system power via IPMI.\n";
-    }
-    else
-    {
-        warn "Ipmiutil missing or broken. Power measurement disabled.\n";
-        undef $power;
-    }
-}
-
-my $pc = PreconditionRunner->new(
-    raw_disk        => $cmd_line->raw_disk,
-    pdnum           => $target->physical_drive,
-    volume          => $target->volume,
-    target_file     => $target->file_name,
-    output_dir      => $output_dir,
-    demo_mode       => $cmd_line->demo_mode,
-    is_target_ssd   => $target->is_ssd
-);
-
-if( $cmd_line->initialize )
-{
-    $pc->initialize();
-}
-else
-{
-    print "Skipping initialization as requested.\n";
-}
-
 my %iogen_args = (
     raw_disk     => $cmd_line->raw_disk,
     pdnum        => $target->physical_drive,
@@ -309,7 +278,6 @@ $iogen = DiskSpd->new( %iogen_args ) if $cmd_line->io_generator =~ 'diskspd';
 print "Testing...\n";
 
 $recipe->run(
-    preconditioner  => $pc,
     io_generator    => $iogen,
     smartctl_runner => $smartctl_runner,
     logman_runner   => $logman_runner,

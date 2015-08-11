@@ -54,12 +54,6 @@ has 'target_file' => (
     default => undef
 );
 
-has 'output_dir' => (
-    is       => 'ro',
-    isa      => 'Str',
-    required => 1
-);
-
 has 'demo_mode' => (
     is       => 'ro',
     isa      => 'Maybe[Bool]',
@@ -143,9 +137,12 @@ sub initialize()
 sub run_to_steady_state($)
 {
     my $self = shift;
+    
+    my %args = @_;
 
-    my $msg_prefix = shift;
-    my $test_ref = shift;
+    my $msg_prefix = $args{'msg_prefix'};
+    my $output_dir = $args{'output_dir'};
+    my $test_ref = $args{'test_ref'};
 
     my $write_percentage = $test_ref->{'write_percentage'};
     my $access_pattern   = $test_ref->{'access_pattern'};
@@ -176,8 +173,8 @@ sub run_to_steady_state($)
 
     $cmd .= $target;
 
-    my $out_file = $self->output_dir . 
-        "\\precondition-$test_ref->{'name_string'}.txt";
+    my $out_file =
+        "$output_dir\\precondition-$test_ref->{'name_string'}.txt";
     
     open( my $OUT, ">$out_file" )
         or die "could not open $out_file: $!";

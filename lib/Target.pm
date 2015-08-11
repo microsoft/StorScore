@@ -43,27 +43,15 @@ has 'target_str' => (
     required => 1
 );
 
-has 'raw_disk' => (
-    is  => 'ro',
-    isa => 'Bool',
+has 'cmd_line' => (
+    is      => 'ro',
+    isa     => 'CommandLine',
     required => 1
 );
 
 has 'override_type' => (
     is  => 'ro',
     isa => 'Maybe[Str]',
-    default => undef,
-);
-
-has 'active_range' => (
-    is  => 'ro',
-    isa => 'Int',
-    required => 1
-);
-
-has 'partition_bytes' => (
-    is  => 'ro',
-    isa => 'Maybe[Int]',
     default => undef,
 );
 
@@ -190,7 +178,7 @@ sub BUILD
     my $self = shift;
 
     my $target_str = $self->target_str;
-    my $raw_disk = $self->raw_disk;
+    my $raw_disk = $self->cmd_line->raw_disk;
 
     if( $target_str =~ /(\\\\\.\\PHYSICALDRIVE)?(\d+)$/ )
     {
@@ -291,7 +279,7 @@ sub prepare
 
         create_filesystem(
             $self->physical_drive,
-            $self->partition_bytes
+            $self->cmd_line->partition_bytes
         );
 
         $self->_volume( physical_drive_to_volume( $self->physical_drive ) );
@@ -312,7 +300,7 @@ sub prepare
         my $size = $free_bytes - BYTES_PER_GB_BASE2;
 
         # Support testing less then 100% of the disk
-        $size = int( $size * $self->active_range / 100 );
+        $size = int( $size * $self->cmd_line->active_range / 100 );
 
         # Round to an even increment of 2MB.
         # Idea is to ensure the file size is an even multiple 
@@ -336,6 +324,24 @@ sub prepare
         print "Syncing target volume...\n";
         
         execute_task( "sync.cmd " . $self->volume, quiet => 1 );
+    }
+
+    if( $self->cmd_line->initialize )
+    {
+        my $pc = PreconditionRunner->new(
+            raw_disk        => $self->cmd_line->raw_disk,
+            pdnum           => $self->physical_drive,
+            volume          => $self->volume,
+            target_file     => $self->file_name,
+            demo_mode       => $self->cmd_line->demo_mode,
+            is_target_ssd   => $self->is_ssd
+        );
+
+        $pc->initialize();
+    }
+    else
+    {
+        print "Skipping initialization as requested.\n";
     }
 }
 

@@ -45,9 +45,21 @@ has 'file_name' => (
     required => 1
 );
 
-has 'io_generator_type' => (
+has 'output_dir' => (
     is       => 'ro',
     isa      => 'Str',
+    required => 1
+);
+
+has 'target' => (
+    is      => 'ro',
+    isa     => 'Target',
+    required => 1
+);
+
+has 'cmd_line' => (
+    is      => 'ro',
+    isa     => 'CommandLine',
     required => 1
 );
 
@@ -57,65 +69,17 @@ has 'recipe_string' => (
     writer => '_recipe_string'
 );
 
+has 'do_precondition' => (
+    is      => 'ro',
+    isa     => 'Bool',
+    default => 1,
+    writer  => '_do_precondition'
+);
+
 has 'steps' => (
     is  => 'ro',
     isa => 'ArrayRef',
     default => sub { [] },
-);
-
-has 'do_initialize' => (
-    is      => 'ro',
-    isa     => 'Bool',
-    default => 1
-);
-
-has 'do_precondition' => (
-    is      => 'ro',
-    isa     => 'Bool',
-    default => 1
-);
-
-has 'demo_mode' => (
-    is      => 'ro',
-    isa     => 'Maybe[Bool]',
-    default => 0
-);
-
-has 'start_on_step' => (
-    is      => 'ro',
-    isa     => 'Int',
-    default => 1
-);
-
-has 'stop_on_step' => (
-    is      => 'ro',
-    isa     => 'Maybe[Int]',
-    writer  => '_stop_on_step',
-    default => undef
-);
-
-has 'test_time_override' => (
-    is      => 'ro',
-    isa     => 'Maybe[Int]',
-    default => undef
-);
-
-has 'warmup_time_override' => (
-    is      => 'ro',
-    isa     => 'Maybe[Int]',
-    default => undef
-);
-
-has 'is_target_ssd' => (
-    is      => 'ro',
-    isa     => 'Bool',
-    default => undef
-);
-
-has 'preconditioner' => (
-    is     => 'ro',
-    isa    => 'PreconditionRunner',
-    writer => '_preconditioner'
 );
 
 has 'io_generator' => (
@@ -171,7 +135,7 @@ sub try_legalize_arguments
 
     return 1 unless $kind eq 'test';
 
-    if( $self->io_generator_type eq 'sqlio' )
+    if( $self->cmd_line->io_generator eq 'sqlio' )
     {
         # sqlio requires time >= 5 sec 
         if( $step_ref->{'run_time'} < 5 )
@@ -200,7 +164,7 @@ sub warn_illegal_args
 
     return unless $kind eq 'test';
 
-    if( $self->io_generator_type eq 'sqlio' )
+    if( $self->cmd_line->io_generator eq 'sqlio' )
     {
         # sqlio requires time >= 5 sec 
         if( $step_ref->{'run_time'} < 5 )
@@ -251,14 +215,14 @@ sub apply_overrides
 
     return unless $kind eq 'test';
 
-    if( defined $self->test_time_override )
+    if( defined $self->cmd_line->test_time_override )
     {
-        $step_ref->{'run_time'} = $self->test_time_override;
+        $step_ref->{'run_time'} = $self->cmd_line->test_time_override;
     }
 
-    if( defined $self->warmup_time_override )
+    if( defined $self->cmd_line->warmup_time_override )
     {
-        $step_ref->{'warmup_time'} = $self->warmup_time_override;
+        $step_ref->{'warmup_time'} = $self->cmd_line->warmup_time_override;
     }
 }
 
@@ -498,6 +462,12 @@ sub BUILD
     
     $self->_recipe_string( slurp_file( $self->file_name ) );
 
+    # Default behavior is to precondition to steady-state when targeting 
+    # an SSD. Allow the command line to override this with --noprecondition.
+    $self->_do_precondition(
+        $self->cmd_line->precondition // $self->target->is_ssd
+    );
+
     # Phase 1: Parse the recipe to estimate runtime, etc.
     #
     # In this case, our callback merely records the step's details,
@@ -509,9 +479,6 @@ sub BUILD
         permissive_perl => 1,
         callback        => sub { push @{$self->steps}, {@_}; }
     );
-    
-    $self->_stop_on_step( $self->get_num_steps )
-        unless defined $self->stop_on_step;
 }
 
 sub get_time_message
@@ -588,8 +555,19 @@ sub run_step
 
     if( $kind eq 'test' and $self->do_precondition )
     {
-        $self->preconditioner->run_to_steady_state(
-            "Preconditioning, ", $step_ref
+        my $pc = PreconditionRunner->new(
+            raw_disk        => $self->cmd_line->raw_disk,
+            pdnum           => $self->target->physical_drive,
+            volume          => $self->target->volume,
+            target_file     => $self->target->file_name,
+            demo_mode       => $self->cmd_line->demo_mode,
+            is_target_ssd   => $self->target->is_ssd
+        );
+
+        $pc->run_to_steady_state(
+            msg_prefix => "Preconditioning, ",
+            output_dir => $self->output_dir,
+            test_ref   => $step_ref
         );
     }
     
@@ -680,7 +658,6 @@ sub run
 
     my %args = @_;
 
-    $self->_preconditioner( $args{'preconditioner'} );
     $self->_io_generator( $args{'io_generator'} );
     $self->_smartctl_runner( $args{'smartctl_runner'} );
     $self->_logman_runner( $args{'logman_runner'} );
@@ -696,8 +673,8 @@ sub run
         permissive_perl => 0,
         callback => sub
         { 
-            unless( ($self->current_step < $self->start_on_step) or
-                    ($self->current_step > $self->stop_on_step) )
+            unless( ($self->current_step < $self->cmd_line->start_on_step) or
+                    ($self->current_step > $self->cmd_line->stop_on_step) )
             {
                 $self->run_step( {@_} );
             }
@@ -719,7 +696,7 @@ sub warn_expected_run_time
    
     if( $num_pc > 0 )
     {
-        if( $self->demo_mode )
+        if( $self->cmd_line->demo_mode )
         {
             $est_pc_time =
                 PreconditionRunner::QUICK_TEST_MIN_RUN_SECONDS;
@@ -738,11 +715,11 @@ sub warn_expected_run_time
 
     print "\tRun time will be >= $time_string";
     
-    if( $self->do_initialize )
+    if( $self->cmd_line->initialize )
     {
         print " after target init";
 
-        if( $self->is_target_ssd )
+        if( $self->target->is_ssd )
         {
             print " (2 overwrites).\n";
         }
