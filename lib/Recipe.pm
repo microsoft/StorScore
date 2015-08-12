@@ -599,7 +599,8 @@ sub run_step
         my $ns = $step_ref->{'name_string'};
 
         $self->smartctl_runner->collect(
-            file_name => "smart-before-$ns.txt"
+            file_name => "smart-before-$ns.txt",
+            output_dir => $self->output_dir,
         )
         if defined $self->smartctl_runner;
 
@@ -618,7 +619,8 @@ sub run_step
         $self->io_generator->run( $step_ref, 'test' );
 
         $self->smartctl_runner->collect(
-            file_name => "smart-after-$ns.txt"
+            file_name => "smart-after-$ns.txt",
+            output_dir => $self->output_dir,
         )
         if defined $self->smartctl_runner;
 

@@ -75,17 +75,9 @@ check_system_compatibility();
 
 mkdir( $results_dir ) unless( -d $results_dir );
 
-our $cmd_line = CommandLine->new( argv => \@ARGV ); # See SharedVariables.pm
-
-my %target_args = (
-    target_str => $cmd_line->target,
-    cmd_line   => $cmd_line
-);
-
-$target_args{'override_type'} = $cmd_line->target_type
-    unless $cmd_line->target_type eq 'auto';
-
-our $target = Target->new( %target_args ); # See SharedVariables.pm
+# See SharedVariables.pm
+our $cmd_line = CommandLine->new( argv => \@ARGV );
+our $target = Target->new( cmd_line => $cmd_line );
 
 my $recipe_file = $cmd_line->recipe;
     
@@ -231,8 +223,7 @@ if( $cmd_line->collect_power )
 $target->prepare();
 
 my $wmic_runner = WmicRunner->new(
-    pdnum      => $target->physical_drive,
-    volume     => $target->volume,
+    target => $target,
     output_dir => $output_dir
 );
 
@@ -243,32 +234,27 @@ my $smartctl_runner = undef;
 if( $cmd_line->collect_smart and $target->supports_smart )
 {
     $smartctl_runner = SmartCtlRunner->new(
-        pdnum      => $target->physical_drive,
-        output_dir => $output_dir
+        physical_drive => $target->physical_drive,
     );
 
     $smartctl_runner->collect(
-        file_name   => "smart.txt",
+        file_name => "smart.txt",
+        output_dir => $output_dir,
         do_identify => 1
     ) 
 }
 
 my $logman_runner = LogmanRunner->new(
-    raw_disk      => $cmd_line->raw_disk,
-    pdnum         => $target->physical_drive,
-    volume        => $target->volume,
-    output_dir    => $output_dir,
-    keep_raw_file => $cmd_line->keep_logman_raw
+    target => $target,
+    cmd_line => $cmd_line,
+    output_dir => $output_dir
 ) 
 if $cmd_line->collect_logman;
         
 my %iogen_args = (
-    raw_disk     => $cmd_line->raw_disk,
-    pdnum        => $target->physical_drive,
-    target_file  => $target->file_name,
-    extra_args   => $cmd_line->io_generator_args,
-    output_dir   => $output_dir,
-    default_comp => $cmd_line->compressibility
+    target => $target,
+    cmd_line => $cmd_line,
+    output_dir => $output_dir
 );
 
 my $iogen;

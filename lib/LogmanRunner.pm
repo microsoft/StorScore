@@ -33,38 +33,28 @@ use File::Temp 'mktemp';
 use Util;
 use sigtrap qw( die normal-signals );
 
-has 'output_dir' => (
-    is      => 'rw',
-    isa     => 'Maybe[Str]',
-    default => undef
+has 'target' => (
+    is => 'ro',
+    isa => 'Target',
+    required => 1
 );
 
-has 'raw_disk' => (
-    is       => 'ro',
-    isa      => 'Bool',
-);
-
-has 'pdnum' => (
-    is  => 'ro',
-    isa => 'Str'
-);
-
-has 'volume' => (
+has 'cmd_line' => (
     is      => 'ro',
-    isa     => 'Maybe[Str]',
-    default => undef
+    isa     => 'CommandLine',
+    required => 1
+);
+
+has 'output_dir' => (
+    is => 'ro',
+    isa => 'Str',
+    required => 1
 );
 
 has 'name_string' => (
     is      => 'rw',
     isa     => 'Maybe[Str]',
     default => undef
-);
-
-has 'keep_raw_file' => (
-    is      => 'ro',
-    isa     => 'Bool',
-    default => 0
 );
 
 # Text file containing the list of Logman counters
@@ -220,11 +210,11 @@ sub is_counter_relevant($)
 
     if( $name =~ /Avg\. Disk Queue Length/ )
     {
-        if( $self->raw_disk )
+        if( $self->cmd_line->raw_disk )
         {
             if( $name =~ /PhysicalDisk\((\d+)/ ) 
             {      
-                return 1 if $1 == $self->pdnum;
+                return 1 if $1 == $self->target->physical_drive;
             }
         }
         else
@@ -232,7 +222,7 @@ sub is_counter_relevant($)
             if( $name =~ /LogicalDisk\((.+)\)/ ) 
             {
                 my $counter_vol = $1;
-                my $target_vol = $self->volume;
+                my $target_vol = $self->target->volume;
                 return 1 if $counter_vol =~ m/$target_vol/i;
             }
         }
@@ -267,7 +257,7 @@ sub stop()
     
     write_csv( $self->pruned_filename, @output_rows );
 
-    unlink $self->raw_filename unless $self->keep_raw_file;
+    unlink $self->raw_filename unless $self->cmd_line->keep_logman_raw;
 }
 
 sub create_counters_file()

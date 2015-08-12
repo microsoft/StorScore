@@ -32,14 +32,10 @@ use Moose;
 use File::Temp 'mktemp';
 use Util;
 
-has 'pdnum' => (
-    is  => 'ro',
-    isa => 'Str'
-);
-
-has 'output_dir' => (
-    is      => 'ro',
-    isa     => 'Str',
+has 'physical_drive' => (
+    is => 'ro',
+    isa => 'Int',
+    required => 1
 );
 
 has 'device_type' => (
@@ -91,18 +87,19 @@ sub collect
     my %args = @_;
     
     my $file_name = $args{'file_name'};
+    my $output_dir = $args{'output_dir'};
     my $dev_type = $args{'dev_type'} // $self->device_type;
     my $do_identify = $args{'do_identify'};
 
     my $cmd = "smartctl.exe ";
     $cmd .= "-d $dev_type " if defined $dev_type;
     $cmd .= "--identify " if defined $do_identify;
-    $cmd .= "-a /dev/pd" . $self->pdnum . " ";
+    $cmd .= "-a /dev/pd" . $self->physical_drive . " ";
     $cmd .= "-s on ";
 
     if( defined $file_name )
     {
-        $file_name = $self->output_dir . "\\$file_name"
+        $file_name = $output_dir . "\\$file_name"
             unless is_absolute_path( $file_name );
 
         $cmd .= "> $file_name";

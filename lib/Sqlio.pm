@@ -34,37 +34,22 @@ use Compressibility;
 
 with 'IOGenerator';
 
-has 'raw_disk' => (
-    is       => 'ro',
-    isa      => 'Bool',
-);
-
-has 'pdnum' => (
-    is  => 'ro',
-    isa => 'Str'
-);
-
-has 'target_file' => (
-    is      => 'ro',
-    isa     => 'Maybe[Str]',
-    default => undef
-);
-
-has 'extra_args' => (
-    is      => 'ro',
-    isa     => 'Maybe[Str]',
-    default => undef
-);
-
 has 'output_dir' => (
-    is       => 'ro',
-    isa      => 'Str',
+    is => 'ro',
+    isa => 'Str',
+    required => 1
 );
 
-has 'default_comp' => (
+has 'target' => (
+    is => 'ro',
+    isa => 'Target',
+    required => 1
+);
+
+has 'cmd_line' => (
     is      => 'ro',
-    isa     => 'Int',
-    default => 0
+    isa     => 'CommandLine',
+    required => 1
 );
 
 sub get_affinity_mask()
@@ -134,21 +119,22 @@ sub run($$)
     # Use default unless compressibility is specified by the test
     my $entropy_file = 
         Compressibility::get_filename( 
-            $compressibility // $self->default_comp
+            $compressibility // $self->cmd_line->compressibility
         );
 
     $cmd .= qq(-q"$entropy_file" );
     
     # All-purpose escape hatch.  Support arbitrary args.
-    $cmd .= " " . $self->extra_args if defined $self->extra_args;
+    $cmd .= " " . $self->cmd_line->io_generator_args
+        if defined $self->cmd_line->io_generator_args;
 
-    if( $self->raw_disk )
+    if( $self->cmd_line->raw_disk )
     {
-        $cmd .= "-R" . $self->pdnum;
+        $cmd .= "-R" . $self->target->physical_drive;
     }
     else
     {
-        $cmd .= $self->target_file; 
+        $cmd .= $self->target->file_name; 
     }
 
     my $out_file = $self->output_dir . 

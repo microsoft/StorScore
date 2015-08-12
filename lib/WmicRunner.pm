@@ -31,20 +31,16 @@ use warnings;
 use Moose;
 use Util;
 
-has 'pdnum' => (
-    is  => 'ro',
-    isa => 'Str'
-);
-
-has 'volume' => (
-    is      => 'ro',
-    isa     => 'Maybe[Str]',
-    default => undef
+has 'target' => (
+    is => 'ro',
+    isa => 'Target',
+    required => 1
 );
 
 has 'output_dir' => (
-    is  => 'ro',
+    is => 'ro',
     isa => 'Str',
+    required => 1
 );
 
 sub collect
@@ -58,7 +54,7 @@ sub collect
         or die "could not open $out_file: $!";
     
     # Collect device info
-    my $pdnum = $self->pdnum;
+    my $pdnum = $self->target->physical_drive;
     my $pdname = "\\\\\\\\.\\\\PHYSICALDRIVE$pdnum";
 
     my $wmic_cmd;
@@ -71,7 +67,7 @@ sub collect
     print $FILE wmic_helper( $wmic_cmd );
 
     # Collect volume info
-    my $vol = $self->volume;
+    my $vol = $self->target->volume;
 
     if( $vol )
     {

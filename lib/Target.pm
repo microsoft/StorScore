@@ -37,92 +37,80 @@ no if $PERL_VERSION >= 5.017011,
 use Util;
 use SmartCtlRunner;
 
-has 'target_str' => (
-    is  => 'ro',
-    isa => 'Str',
-    required => 1
-);
-
 has 'cmd_line' => (
-    is      => 'ro',
-    isa     => 'CommandLine',
+    is => 'ro',
+    isa => 'CommandLine',
     required => 1
-);
-
-has 'override_type' => (
-    is  => 'ro',
-    isa => 'Maybe[Str]',
-    default => undef,
 );
 
 has 'physical_drive' => (
-    is  => 'ro',
+    is => 'ro',
     isa => 'Maybe[Str]',
     default => undef,
-    writer  => '_physical_drive'
+    writer => '_physical_drive'
 );
 
 has 'volume' => (
-    is  => 'ro',
+    is => 'ro',
     isa => 'Maybe[Str]',
     default => undef,
-    writer  => '_volume'
+    writer => '_volume'
 );
 
 has 'file_name' => (
     is  => 'ro',
     isa => 'Maybe[Str]',
     default => undef,
-    writer  => '_file_name'
+    writer => '_file_name'
 );
 
 has 'supports_smart' => (
     is  => 'ro',
     isa => 'Bool',
     default => 0,
-    writer  => '_supports_smart'
+    writer => '_supports_smart'
 );
 
 has 'rotation_rate' => (
-    is  => 'ro',
+    is => 'ro',
     isa => 'Maybe[Str]',
     default => undef,
-    writer  => '_rotation_rate'
+    writer => '_rotation_rate'
 );
 
 has 'sata_version' => (
-    is  => 'ro',
+    is => 'ro',
     isa => 'Maybe[Str]',
     default => undef,
-    writer  => '_sata_version'
+    writer => '_sata_version'
 );
 
 has 'model' => (
-    is  => 'ro',
+    is => 'ro',
     isa => 'Maybe[Str]',
     default => undef,
-    writer  => '_model'
+    writer => '_model'
 );
 
 has 'must_clean_disk' => (
-    is  => 'ro',
+    is => 'ro',
     isa => 'Bool',
     default => 0,
-    writer  => '_must_clean_disk'
+    writer => '_must_clean_disk'
 );
 
 has 'must_create_new_filesystem' => (
-    is  => 'ro',
+    is => 'ro',
     isa => 'Bool',
     default => 0,
-    writer  => '_must_create_new_filesystem'
+    writer => '_must_create_new_filesystem'
 );
 
 has 'must_create_new_file' => (
-    is  => 'ro',
+    is => 'ro',
     isa => 'Bool',
     default => 0,
-    writer  => '_must_create_new_file'
+    writer => '_must_create_new_file'
 );
 
 sub is_ssd()
@@ -142,8 +130,10 @@ sub is_hdd
 sub type
 {
     my $self = shift;
-    
-    return $self->override_type if defined $self->override_type;
+   
+    # Allow command line to override automatic target detection
+    return $self->cmd_line->target_type
+        unless $self->cmd_line->target_type eq 'auto';
     
     if( $self->supports_smart and 
         $self->rotation_rate =~ /Solid State Device/ )
@@ -177,7 +167,7 @@ sub BUILD
 {
     my $self = shift;
 
-    my $target_str = $self->target_str;
+    my $target_str = $self->cmd_line->target;
     my $raw_disk = $self->cmd_line->raw_disk;
 
     if( $target_str =~ /(\\\\\.\\PHYSICALDRIVE)?(\d+)$/ )
@@ -229,20 +219,15 @@ sub BUILD
 
     $self->_model( get_drive_model( $self->physical_drive ) );
 
-    my $smartctl =
-        SmartCtlRunner->new( pdnum => $self->physical_drive );
+    my $smartctl = SmartCtlRunner->new(
+        physical_drive => $self->physical_drive
+    );
 
     if( $smartctl->is_functional )
     {
         $self->_supports_smart( 1 );
         $self->_rotation_rate( $smartctl->rotation_rate );
         $self->_sata_version( $smartctl->sata_version );
-    }
-
-    if( defined $self->override_type )
-    {
-        die "Error: invalid target override type\n"
-            unless $self->override_type ~~ [qw( ssd hdd )];
     }
 }   
 
