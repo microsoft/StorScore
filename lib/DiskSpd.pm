@@ -238,6 +238,18 @@ sub parse_cmd_line($$)
     {
         $stats_ref->{'Compressibility'} = 0;
     }
+
+    $cmd_line =~ /\s+(".*"|\S+)$/ or die;
+    my $target = $1;
+
+    if( $target =~ /^\#\d+$/ )
+    {
+        $stats_ref->{'Raw Disk'} = 1;
+    }
+    else
+    {
+        $stats_ref->{'Raw Disk'} = 0;
+    }
 }
 
 my $pct_table_pat = qr/\|\s+(.+)\s+\|\s+(.+)\s+\|\s+(.+)\s+/;
