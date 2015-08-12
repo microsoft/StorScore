@@ -1408,9 +1408,6 @@ sub extract_raw_scores(\@)
         warn $msg;
     }
 
-    scores_hash_is_valid( %raw_scores ) 
-        or die "Error while generating raw scores\n";
-
     return %raw_scores;
 }
 
@@ -1450,9 +1447,6 @@ sub compute_std_scores(\%)
             }
         }
     }
-
-    scores_hash_is_valid( %std_scores ) 
-        or die "Error while generating standard scores\n";
 
     return %std_scores;
 }
@@ -1541,9 +1535,6 @@ sub normalize_scores(\%)
             }
         }
     }
-
-    scores_hash_is_valid( %normalized_scores ) 
-        or die "Error while generating normalized scores\n";
 
     return %normalized_scores;
 }
@@ -1944,10 +1935,36 @@ print "Detecting outliers...\n";
 my %outliers = find_outliers( $workbook, @all_stats );
 
 print "Computing scores...\n";
+
+my $scores_invalid = 0;
+
 my %raw_scores = extract_raw_scores( @all_stats );
+
+unless( scores_hash_is_valid( %raw_scores ) )
+{
+    warn "Error while generating raw scores\n";
+    $scores_invalid = 1;
+}
+
 my %std_scores = compute_std_scores( %raw_scores );
+
+unless( scores_hash_is_valid( %std_scores ) )
+{
+    warn "Error while generating standard scores\n";
+    $scores_invalid = 1;
+}
+    
 make_bigger_better( %std_scores );
+
 my %normalized_scores = normalize_scores( %std_scores );
+    
+unless( scores_hash_is_valid( %normalized_scores ) )
+{
+    warn "Error while generating normalized scores\n";
+    $scores_invalid = 1;
+}
+    
+warn "Scores sheets will not be generated\n" if $scores_invalid;
 
 # Scoring policies compute a weight with arbitrary range.
 # Here we convert to a fractional weight between 0 and 1. 
@@ -1974,7 +1991,8 @@ generate_scores_sheets(
     %weighted_score_components,
     %final_scores,
     %weights_as_fractions
-);
+)
+unless $scores_invalid;
 
 $workbook->close() or die "Error closing workbook $outfile: $!\n";
 
