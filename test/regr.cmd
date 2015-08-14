@@ -63,28 +63,39 @@ sub my_exec
     system( "echo TEST_END >> $outfile" );
     system( "echo. >> $outfile" );
 }
-
+    
 sub run_one
 {
     my $args = shift;
+    
+    my $cmd = "storscore.cmd ";
 
-    my $common_args;
-    $common_args .= "--target=1234 ";
-    $common_args .= "--pretend ";
-    $common_args .= "--verbose ";
-    $common_args .= "--noprompt ";
+    $cmd .= "--target=1234 " unless $args =~ /--target=/;
 
-    foreach my $target_type ( qw( auto ssd hdd error ) )
+    $cmd .= "--pretend ";
+    $cmd .= "--verbose ";
+    $cmd .= "--noprompt ";
+    
+    my_exec( "$cmd $args" );
+}
+
+sub run_matrix
+{
+    my $args = shift;
+
+    foreach my $target ( undef, 'P:', 'P:\\fake' )
     {
-        foreach my $recipe ( undef, 'recipes\\corners.rcp' )
-        {
-            my $cmd = "storscore.cmd $common_args ";
+    foreach my $target_type ( qw( auto ssd hdd ) )
+    {
+    foreach my $recipe ( undef, 'recipes\\corners.rcp' )
+    {
+        $args .= " --target=$target" if defined $target;
+        $args .= " --target_type=$target_type";
+        $args .= " --recipe=$recipe" if defined $recipe;
 
-            $cmd .= "--target_type=$target_type ";
-            $cmd .= "--recipe=$recipe " if defined $recipe;
-
-            my_exec( "$cmd $args" );
-        }
+        run_one( $args );
+    }
+    }
     }
 }
 
@@ -94,39 +105,47 @@ chdir( ".." );
 # Preserve existing results directory
 rename( "results", "results.orig" );
 
-run_one( "" );
+# Run these error conditions just once 
 run_one( "--this_flag_does_not_exist" );
-run_one( "--initialize" );
-run_one( "--noinitialize" );
-run_one( "--precondition" );
-run_one( "--noprecondition" );
-run_one( "--raw_disk" );
-run_one( "--active_range=0" );
-run_one( "--active_range=1" );
-run_one( "--active_range=50" );
-run_one( "--active_range=100" );
-run_one( "--active_range=110" );
-run_one( "--partition_bytes=1000000000" );
-run_one( "--partition_bytes=1000000000 --raw_disk" );
-run_one( "--demo_mode" );
-run_one( "--test_id=regr" );
-run_one( "--test_id_prefix=regr" );
-run_one( "--nocollect_smart" );
-run_one( "--nocollect_logman" );
-run_one( "--nocollect_power" );
-run_one( "--start_on_step=2" );
-run_one( "--stop_on_step=2" );
-run_one( "--test_time_override=42" );
-run_one( "--warmup_time_override=42" );
-run_one( "--compressibility=0" );
-run_one( "--compressibility=1" );
-run_one( "--compressibility=20" );
-run_one( "--compressibility=80" );
-run_one( "--compressibility=99" );
-run_one( "--results_share=\\\\share\\dir" );
-run_one( "--io_generator=diskspd" );
-run_one( "--io_generator=sqlio" );
 run_one( "--io_generator=bogus" );
+run_one( "--target_type=bogus" );
+run_one( "--active_range=0" );
+run_one( "--active_range=110" );
+run_one( "--partition_bytes=1000000000 --raw_disk" );
+run_one( "--compressibility=110" );
+
+# These are the defaults anyway, so just run them once
+run_one( "--initialize" );
+run_one( "--precondition" );
+run_one( "--active_range=100" );
+run_one( "--collect_smart" );
+run_one( "--collect_logman" );
+run_one( "--collect_power" );
+run_one( "--io_generator=diskspd" );
+
+# Run the full matrix on these
+run_matrix( "" );
+run_matrix( "--noinitialize" );
+run_matrix( "--noprecondition" );
+run_matrix( "--raw_disk" );
+run_matrix( "--active_range=1" );
+run_matrix( "--active_range=50" );
+run_matrix( "--partition_bytes=1000000000" );
+run_matrix( "--demo_mode" );
+run_matrix( "--test_id=regr" );
+run_matrix( "--test_id_prefix=regr" );
+run_matrix( "--nocollect_smart" );
+run_matrix( "--nocollect_logman" );
+run_matrix( "--nocollect_power" );
+run_matrix( "--start_on_step=2" );
+run_matrix( "--stop_on_step=2" );
+run_matrix( "--test_time_override=42" );
+run_matrix( "--warmup_time_override=42" );
+run_matrix( "--compressibility=0" );
+run_matrix( "--compressibility=1" );
+run_matrix( "--compressibility=20" );
+run_matrix( "--results_share=\\\\share\\dir" );
+run_matrix( "--io_generator=sqlio" );
 
 # Restore original results directory
 system( "rmdir /S /Q results >NUL 2>&1" );
