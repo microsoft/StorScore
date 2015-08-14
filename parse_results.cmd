@@ -74,8 +74,8 @@ no if $PERL_VERSION >= 5.017011,
 
 use DeviceDB;
 use Util;
-use Sqlio;
-use DiskSpd;
+use SqlioParser;
+use DiskSpdParser;
 use PreconditionParser;
 use LogmanParser;
 use Power;
@@ -162,13 +162,13 @@ sub parse_test_file($$)
     if( $cmd_line =~ /diskspd/i )
     {
         $stats_ref->{'IO Generator'} = "diskspd";
-        $iogen = DiskSpd->new();
+        $iogen = DiskSpdParser->new();
 
     }
     elsif( $cmd_line =~ /sqlio/i )
     {
         $stats_ref->{'IO Generator'} = "sqlio";
-        $iogen = Sqlio->new();
+        $iogen = SqlioParser->new();
     }
     else
     {
@@ -185,7 +185,7 @@ sub compute_rw_amounts($)
 {
     my $stats_ref = shift;
 
-    my $total_IOs = $stats_ref->{'IOs Total'};
+    my $total_IOs = $stats_ref->{'IOs Total'} // 0;
     my $total_GB = $total_IOs * $stats_ref->{'Access Size'} / KB_PER_GB;
     $stats_ref->{'GB Total'} = $total_GB;
     

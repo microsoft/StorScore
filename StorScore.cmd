@@ -64,8 +64,8 @@ use Target;
 use PreconditionRunner;
 use SmartCtlRunner;
 use Recipe;
-use DiskSpd;
-use Sqlio;
+use DiskSpdRunner;
+use SqlioRunner;
 use LogmanRunner;
 use Power;
 use WmicRunner;
@@ -258,8 +258,12 @@ my %iogen_args = (
 );
 
 my $iogen;
-$iogen = Sqlio->new( %iogen_args ) if $cmd_line->io_generator =~ 'sqlio';
-$iogen = DiskSpd->new( %iogen_args ) if $cmd_line->io_generator =~ 'diskspd';
+
+$iogen = SqlioRunner->new( %iogen_args )
+    if $cmd_line->io_generator =~ 'sqlio';
+
+$iogen = DiskSpdRunner->new( %iogen_args )
+    if $cmd_line->io_generator =~ 'diskspd';
 
 print "Testing...\n";
 
