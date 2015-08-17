@@ -150,7 +150,7 @@ $device_db{'C400-MTFDDAK512MAM'} =
     'Rated PE Cycles'             => 3000,
 };
 
-$device_db{'MICRON_M510DC_EEFDDAK480MBP'} =
+$device_db{'MICRON_M510DC_MTFDDAK480MBP'} =
 {
     'Friendly Name' => 'Micron M510 DC 480GB',
     'Host Writes' =>
