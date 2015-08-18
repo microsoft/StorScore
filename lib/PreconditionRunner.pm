@@ -122,6 +122,9 @@ sub initialize()
         }
     }
 
+    # Fake progress message for pretend mode
+    print "Initializing target: 100% [xx.x MB/s]\n" if $pretend;
+
     my $cmd = "precondition.exe ";
 
     $cmd .= "-n$num_passes ";
@@ -181,6 +184,9 @@ sub run_to_steady_state($)
    
     # Save the command line as line 1 of the file
     print $OUT "$cmd\n";
+    
+    # Fake progress message for pretend mode
+    print "Preconditioning, achieved steady-state after 0 sec\n" if $pretend;
 
     # Don't capture stderr so progress message goes to console
     my ( $errorlevel, $stdout ) = 
