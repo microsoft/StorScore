@@ -187,7 +187,7 @@ sub BUILD
             $self->_must_create_new_file( 1 );
         }
     }
-    elsif( lc( $target_str ) =~ /^([a-z]{1}\:)$/ )
+    elsif( uc( $target_str ) =~ /^([A-Z]{1}\:)$/ )
     {
         die "Error: --raw_disk unsupported with existing volumes.\n"
             if $raw_disk;
@@ -195,22 +195,24 @@ sub BUILD
         $self->_volume( $1 );
        
         my $pdname = volume_to_physical_drive( $self->volume );
-        $self->_physical_drive( chop $pdname ); 
+        $pdname =~ /(\d+$)/;
+        $self->_physical_drive( $1 ); 
 
         $self->_must_create_new_file( 1 );
     }
-    elsif( -r $target_str )
+    elsif( -r $target_str or $pretend )
     {
         die "Error: --raw_disk unsupported with existing files.\n"
             if $raw_disk;
       
         $self->_file_name( $target_str );
 
-        lc( $target_str ) =~ /^([a-z]{1}\:)/;
+        uc( $target_str ) =~ /^([A-Z]{1}\:)/;
         $self->_volume( $1 );
         
         my $pdname = volume_to_physical_drive( $self->volume );
-        $self->_physical_drive( chop $pdname ); 
+        $pdname =~ /(\d+$)/;
+        $self->_physical_drive( $1 ); 
     }
     else
     {

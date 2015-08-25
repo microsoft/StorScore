@@ -165,7 +165,10 @@ if( $target->must_clean_disk )
 elsif( defined $target->file_name and
     ( $cmd_line->initialize or $recipe->contains_writes ) )
 {
-    die "Target is not writable\n" unless -w $target->file_name;
+    unless( -w $target->file_name or $pretend )
+    {
+        die "Target is not writable\n"
+    }
 
     my $msg;
 

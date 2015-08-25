@@ -196,6 +196,8 @@ sub wmic_helper($)
 
     my ( $errorlevel, $stdout ) = execute_task( "wmic $wmic_cmd" );
 
+    return "" if $pretend;
+
     die "wmic failed" if $errorlevel != 0;
 
     return unicode_to_ascii( $stdout );
@@ -203,8 +205,6 @@ sub wmic_helper($)
 
 sub physical_drive_exists
 {
-    return 1 if $pretend; # Pretend drives always exist :)
-
     my $pdnum = shift;
     my $pdname = "\\\\\\\\.\\\\PHYSICALDRIVE$pdnum";
 
@@ -212,6 +212,8 @@ sub physical_drive_exists
         qq(path Win32_DiskDrive where Name="$pdname");
 
     my @wmic_lines = split /\n/, wmic_helper( $wmic_cmd );
+    
+    return 1 if $pretend; # Pretend drives always exist :)
 
     return 0 if $wmic_lines[0] =~ /No Instance/;
 
@@ -220,30 +222,30 @@ sub physical_drive_exists
 
 sub get_volume_size($)
 {
-    # Report "pretend volumes" as having 512 GB size
-    return 512 * BYTES_PER_GB_BASE10 if $pretend;
-
     my $vol = shift;
     
     my $wmic_cmd = 
         qq(path Win32_LogicalDisk where Name="$vol" get Size);
 
     my @wmic_lines = split /\n/, wmic_helper( $wmic_cmd );
+    
+    # Report "pretend volumes" as having 512 GB size
+    return 512 * BYTES_PER_GB_BASE10 if $pretend;
  
     return $wmic_lines[1];
 }
 
 sub get_volume_free_space($)
 {
-    # Report "pretend volumes" as having 512 GB free
-    return 512 * BYTES_PER_GB_BASE10 if $pretend;
-
     my $vol = shift;
     
     my $wmic_cmd = 
         qq(path Win32_LogicalDisk where Name="$vol" get FreeSpace);
 
     my @wmic_lines = split /\n/, wmic_helper( $wmic_cmd );
+    
+    # Report "pretend volumes" as having 512 GB free
+    return 512 * BYTES_PER_GB_BASE10 if $pretend;
     
     return $wmic_lines[1];
 }
@@ -263,8 +265,6 @@ sub get_drive_size($)
 
 sub get_drive_model($)
 {
-    return 'StorScore Pretend Drive' if $pretend;
-
     my $pdnum = shift;
     my $pdname = "\\\\\\\\.\\\\PHYSICALDRIVE$pdnum";
     
@@ -273,6 +273,8 @@ sub get_drive_model($)
 
     my @wmic_lines = split /\n/, wmic_helper( $wmic_cmd );
  
+    return 'StorScore Pretend Drive' if $pretend;
+
     return $wmic_lines[1];
 }
 
@@ -515,6 +517,8 @@ sub volume_to_partition($)
     $wmic_cmd .= qq(assoc /assocclass:Win32_LogicalDiskToPartition);
     
     my $wmic_out = ( split /\n/, wmic_helper( $wmic_cmd ) )[2];
+    
+    return 'Disk #42, Partition #42' if $pretend;
 
     $wmic_out =~ /Win32_DiskPartition\.DeviceID=\"([^\"]*)\"/;
 
@@ -534,6 +538,8 @@ sub partition_to_physical_drive($)
 
     my $wmic_out = ( split /\n/, wmic_helper( $wmic_cmd ) )[2];
     
+    return '\\\\\\\\.\\\\PHYSICALDRIVE42' if $pretend;
+
     $wmic_out =~ /Win32_DiskDrive\.DeviceID=\"([^\"]*)\"/;
 
     return $1;
@@ -551,8 +557,6 @@ sub volume_to_physical_drive($)
 # ISSUE-REVIEW: what about physical_drives that have multiple partitions?
 sub physical_drive_to_partition($)
 {
-    return 'Disk #0, Partition #0' if $pretend;
-
     my $pdnum = shift;
     my $pdname = "\\\\\\\\.\\\\PHYSICALDRIVE$pdnum";
 
@@ -564,6 +568,8 @@ sub physical_drive_to_partition($)
 
     my $wmic_out = ( split /\n/, wmic_helper( $wmic_cmd ) )[2];
     
+    return 'Disk #42, Partition #42' if $pretend;
+    
     $wmic_out =~ /Win32_DiskPartition\.DeviceID=\"([^\"]*)\"/;
 
     return $1;
@@ -571,8 +577,6 @@ sub physical_drive_to_partition($)
 
 sub partition_to_volume($)
 {
-    return 'P:' if $pretend;
-
     my $partition = shift;
 
     my $wmic_cmd;
@@ -582,6 +586,8 @@ sub partition_to_volume($)
     $wmic_cmd .= qq(assoc /assocclass:Win32_LogicalDiskToPartition);
     
     my $wmic_out = ( split /\n/, wmic_helper( $wmic_cmd ) )[2];
+
+    return 'P:' if $pretend;
 
     $wmic_out =~ /Win32_LogicalDisk\.DeviceID=\"([^\"]*)\"/;
 
