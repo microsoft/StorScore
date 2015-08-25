@@ -81,7 +81,7 @@ sub run_one
 
 sub run_matrix
 {
-    my $args = shift;
+    my $base_args = shift;
 
     foreach my $target ( undef, 'P:', 'P:\\fake' )
     {
@@ -89,11 +89,13 @@ sub run_matrix
     {
     foreach my $recipe ( undef, 'recipes\\corners.rcp' )
     {
-        $args .= " --target=$target" if defined $target;
-        $args .= " --target_type=$target_type";
-        $args .= " --recipe=$recipe" if defined $recipe;
+        my $matrix_args;
+        
+        $matrix_args .= " --target_type=$target_type";
+        $matrix_args .= " --target=$target" if defined $target;
+        $matrix_args .= " --recipe=$recipe" if defined $recipe;
 
-        run_one( $args );
+        run_one( "$matrix_args $base_args" );
     }
     }
     }
