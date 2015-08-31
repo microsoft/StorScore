@@ -48,7 +48,10 @@ unless( $cmd_line->raw_disk )
     my $drive_letter = $target->volume;
     $drive_letter =~ s/://;
 
-    bg_exec( "sync_loop.cmd $drive_letter" );
+    bg_exec( 
+        description => "Sync Loop",
+        command => "sync_loop.cmd $drive_letter"
+    );
     do_workload( "Targeted Test Background Flush" );
     bg_killall();
 }

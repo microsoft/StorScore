@@ -45,11 +45,17 @@ if( $target->supports_smart )
 {
     do_workload( "Targeted Test Read Baseline" );
 
-    bg_exec( "wmi_loop.cmd" );
+    bg_exec(
+        description => "WMI Loop",
+        command => "wmi_loop.cmd",
+    );
     do_workload( "Targeted Test SMART Return Status" );
     bg_killall();
 
-    bg_exec( "smart_loop.cmd " . $target->physical_drive );
+    bg_exec(
+        description => "SMART Loop",
+        command => "smart_loop.cmd " . $target->physical_drive,
+    );
     do_workload( "Targeted Test SMART Read Data " );
     bg_killall();
 }

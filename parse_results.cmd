@@ -146,6 +146,40 @@ sub parse_warmup_file($$)
     }
 }
 
+sub parse_background_file($$)
+{
+    my $file_name = shift;
+    my $stats_ref = shift;
+       
+    unless( -e $file_name )
+    {
+        $stats_ref->{'Background Processes'} = "None";
+        return;
+    }
+
+    return 0 unless -e $file_name;
+
+    open my $LOG, "<$file_name" 
+        or die "Error opening $file_name";
+
+    while( my $line = <$LOG> ) 
+    {
+        my $description = $line;
+        <$LOG>; # Command line is currently ignored
+        <$LOG>; # PID is currently ignored
+        <$LOG>; # Blank line expected here
+
+        if( defined $stats_ref->{'Background Processes'} )
+        {
+            $stats_ref->{'Background Processes'} .= ", ";
+        }
+
+        $stats_ref->{'Background Processes'} .= $description;
+    }
+
+    close $LOG;
+}
+
 sub parse_test_file($$)
 {
     my $file_name = shift;
@@ -348,6 +382,7 @@ my @cols =
         name   => "Warmup MB/sec Total",
         format => '#,##0.00',
     },
+    { name => 'Background Processes' },
 );
 
 sub generate_cols_section($)
@@ -608,6 +643,11 @@ sub parse_directories(@)
     
             parse_warmup_file(
                 "warmup-$base_name.txt",
+                \%file_stats
+            );
+
+            parse_background_file(
+                "background-$base_name.txt",
                 \%file_stats
             );
 

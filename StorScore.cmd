@@ -14,8 +14,9 @@ if %ERRORLEVEL% NEQ 0 (
 for /F "tokens=4" %%I IN ('powercfg -getactivescheme') DO set ORIG_SCHEME=%%I
 powercfg -setactive SCHEME_MIN
 start /B /WAIT /HIGH perl "%~f0" %*
+set PERL_ERROR_LEVEL=%ERRORLEVEL%
 powercfg -setactive %ORIG_SCHEME%
-exit /B %ERRORLEVEL%
+exit /B %PERL_ERROR_LEVEL%
 );
 
 # StorScore
@@ -112,26 +113,8 @@ else
     $output_dir .= 
         "$prefix-" . strftime( "%Y-%m-%d_%H-%M-%S", localtime );
 }
-    
+
 print "Targeting " . uc( $target->type ) . ": " . $target->model . "\n";
-
-if( $target->is_ssd )
-{
-    if( $target->supports_smart and 
-        $target->is_sata and
-        !$target->is_6Gbps_sata )
-    {
-        my $msg;
-
-        $msg .= "\n\tWarning!\n";
-        $msg .= "\tSSD target is not 6Gb/s SATA III.\n";
-        $msg .= "\tThroughput will be limited.\n";
-
-        warn $msg;
-    }
-}
-
-print "\n";
 
 my $recipe = Recipe->new(
     file_name            => $recipe_file,
@@ -152,7 +135,23 @@ $recipe->warn_expected_run_time();
 
 detect_scep_and_warn();
 
-if( $target->must_clean_disk ) 
+if( $target->is_ssd )
+{
+    if( $target->supports_smart and 
+        $target->is_sata and
+        !$target->is_6Gbps_sata )
+    {
+        my $msg;
+
+        $msg .= "\tWarning!\n";
+        $msg .= "\tSSD target is not 6Gb/s SATA III.\n";
+        $msg .= "\tThroughput will be limited.\n\n";
+
+        warn $msg;
+    }
+}
+
+if( $target->do_purge ) 
 {
     my $msg;
 
@@ -162,21 +161,47 @@ if( $target->must_clean_disk )
 
     warn $msg;
 }
-elsif( defined $target->file_name and
-    ( $cmd_line->initialize or $recipe->contains_writes ) )
+else
 {
-    unless( -w $target->file_name or $pretend )
+    if( $target->is_existing_file_or_volume )
     {
-        die "Target is not writable\n"
+        my $msg;
+
+        $msg .= "\tWarning!\n";
+        $msg .= "\tTarget is an existing file/volume.\n";
+        $msg .= "\tCan not purge without destroying target.\n";
+        $msg .= "\tPurge steps will be skipped.\n\n";
+
+        warn $msg;
+    }
+    
+    if( $target->is_ssd )
+    {
+        my $msg;
+
+        $msg .= "\tWarning!\n";
+        $msg .= "\tCan not eliminate SSD history effect without purge.\n";
+        $msg .= "\tFor best results target a physical drive and purge.\n\n";
+
+        warn $msg;
     }
 
-    my $msg;
+    if( defined $target->file_name and
+        ( $target->do_initialize or $recipe->contains_writes ) )
+    {
+        unless( -w $target->file_name or $pretend )
+        {
+            die "Target is not writable\n"
+        }
 
-    $msg .= "\tWarning!\n";
-    $msg .= "\tThis will destroy ";
-    $msg .= $target->file_name . "\n\n";
+        my $msg;
 
-    warn $msg;
+        $msg .= "\tWarning!\n";
+        $msg .= "\tThis will destroy ";
+        $msg .= $target->file_name . "\n\n";
+
+        warn $msg;
+    }
 }
 
 exit 0 unless should_proceed();
@@ -217,13 +242,20 @@ if( $cmd_line->collect_power )
     }
 }
 
-# TODO: SECURE ERASE
-#
-# In the future when we support SECURE ERASE, the line below 
-# should change to be conditional, like this:
-#    $target->prepare() if $target->is_hdd();
+if( defined $cmd_line->purge and not $cmd_line->purge )
+{
+    print "Will skip purging as requested.\n";
+}
 
-$target->prepare();
+if( defined $cmd_line->initialize and not $cmd_line->initialize )
+{
+    print "Will skip initialization as requested.\n";
+}
+
+if( defined $cmd_line->precondition and not $cmd_line->precondition )
+{
+    print "Will skip preconditioning as requested.\n";
+}
 
 my $wmic_runner = WmicRunner->new(
     target => $target,

@@ -41,6 +41,11 @@ use File::Basename;
 use Digest::MD5 'md5_hex';
 use English;
 
+use FindBin;
+use lib "$FindBin::Bin\\..\\lib";
+
+use Util;
+
 my $script_name = basename( $PROGRAM_NAME );
 my $script_dir = dirname( $PROGRAM_NAME );
 
@@ -51,6 +56,9 @@ unless( scalar @ARGV == 1 )
 }
 
 my $outdir = "$script_dir\\$ARGV[0]";
+
+my $total_tests = 0;
+my $num_nonzero_exits = 0;
 
 die "Directory $outdir exists\n" if -d $outdir;
 
@@ -65,9 +73,16 @@ sub my_exec
     my $tmp_filename = "$base_filename.tmp";
     my $out_filename = "$base_filename.txt";
 
-    system( "echo $cmd > $tmp_filename" );
-    system( "$cmd >> $tmp_filename 2>&1" );
-    
+    execute_task( "echo $cmd > $tmp_filename" );
+    my $errorlevel = execute_task( "$cmd >> $tmp_filename 2>&1" );
+    execute_task( "echo ERRORLEVEL=$errorlevel >> $tmp_filename" );
+  
+    if( $errorlevel != 0 )
+    {
+        warn qq(Errorlevel $errorlevel while running "$cmd"\n);
+        $num_nonzero_exits++;
+    }
+
     # Post process raw output file to remove noise
     open( my $in, "<$tmp_filename" );
     open( my $out, ">$out_filename" );
@@ -110,22 +125,45 @@ sub run_one
     $cmd .= "--verbose ";
     $cmd .= "--noprompt ";
     
+    system( "rmdir /S /Q results >NUL 2>&1" );
+
     my_exec( "$cmd $args" );
+
+    $total_tests++;
 }
 
 sub run_matrix
 {
     my $base_args = shift;
 
-    foreach my $target ( undef, 'P:', 'P:\\fake' )
+    my @targets = ( undef );
+   
+    unless( $base_args =~ /--target=/ )
     {
-    foreach my $target_type ( qw( auto ssd hdd ) )
+        push @targets, 'P:';
+        push @targets, 'P:\\fake';
+    }
+   
+    my @target_types;
+
+    if( $base_args =~ /--target_type=/ )
+    {
+        @target_types = ( undef );
+    }
+    else
+    {
+        @target_types = ( qw( auto ssd hdd ) );
+    }
+
+    foreach my $target ( @targets )
+    {
+    foreach my $target_type ( @target_types )
     {
     foreach my $recipe ( undef, 'recipes\\corners.rcp' )
     {
-        my $matrix_args;
+        my $matrix_args = "";
         
-        $matrix_args .= " --target_type=$target_type";
+        $matrix_args .= " --target_type=$target_type" if defined $target_type;
         $matrix_args .= " --target=$target" if defined $target;
         $matrix_args .= " --recipe=$recipe" if defined $recipe;
 
@@ -134,6 +172,8 @@ sub run_matrix
     }
     }
 }
+
+my $overall_start = time();
 
 chdir( ".." );
     
@@ -148,10 +188,10 @@ run_one( "--active_range=0" );
 run_one( "--active_range=110" );
 run_one( "--partition_bytes=1000000000 --raw_disk" );
 run_one( "--compressibility=110" );
+run_one( "--raw_disk --target=P:" );
+run_one( "--raw_disk --target=P:\\fake" );
 
 # These are the defaults anyway, so just run them once
-run_one( "--initialize" );
-run_one( "--precondition" );
 run_one( "--active_range=100" );
 run_one( "--collect_smart" );
 run_one( "--collect_logman" );
@@ -160,9 +200,11 @@ run_one( "--io_generator=diskspd" );
 
 # Run the full matrix on these
 run_matrix( "" );
-run_matrix( "--noinitialize" );
-run_matrix( "--noprecondition" );
-run_matrix( "--raw_disk" );
+run_matrix( "--initialize --target_type=hdd" );
+run_matrix( "--precondition --target_type=hdd" );
+run_matrix( "--noinitialize --target_type=ssd" );
+run_matrix( "--noprecondition --target_type=ssd" );
+run_matrix( "--raw_disk --target=1234" );
 run_matrix( "--active_range=1" );
 run_matrix( "--active_range=50" );
 run_matrix( "--partition_bytes=1000000000" );
@@ -181,9 +223,16 @@ run_matrix( "--compressibility=1" );
 run_matrix( "--compressibility=20" );
 run_matrix( "--results_share=\\\\share\\dir" );
 run_matrix( "--io_generator=sqlio" );
+run_matrix( "--nopurge --target=1234" );
+run_matrix( "--purge --target=P:" );
+run_matrix( "--purge --target=P:\\fake" );
 
 # Restore original results directory
 system( "rmdir /S /Q results >NUL 2>&1" );
 rename( "results.orig", "results" );
 
-print "Done! Diff $outdir directory against another run.\n";
+my $dstr = seconds_to_human( time() - $overall_start );
+print "Done (took $dstr)\n";
+print "Ran $total_tests tests\n";
+print "Number of non-zero exits: $num_nonzero_exits\n";
+print "Diff $outdir directory against another run.\n";

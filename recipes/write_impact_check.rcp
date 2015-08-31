@@ -26,27 +26,69 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-sub do_workload($)
-{
-    my $name_string = shift;
-
-    test(
-        name_string         => $name_string, 
-        write_percentage    => 0, 
-        access_pattern      => 'random',
-        block_size          => '8K',
-        queue_depth         => 4,
-        warmup_time         => 60,
-        run_time            => 3600
-    ); 
-}
-
 # ISSUE-REVIEW: This could be made to work w/raw_disk if its ever important
 unless( $cmd_line->raw_disk )
 {
-    do_workload( "Targeted Test Write Impact Baseline" );
+    my $ns_prefix = "Targeted Test Write Impact";
 
-    bg_exec( "write_slowly.cmd " . $target->file_name );
-    do_workload( "Targeted Test Write Impact" );
-    bg_killall();
+    foreach my $block_size ( qw( 4K 8K 64K ) )
+    {
+        foreach my $access_pattern ( qw( Random Sequential ) )
+        {
+            my %workload = (
+                write_percentage    => 0, 
+                access_pattern      => lc( $access_pattern ),
+                block_size          => $block_size,
+                queue_depth         => 4,
+                warmup_time         => 60,
+                run_time            => 3600
+            ); 
+           
+            my $ns = "$ns_prefix $block_size $access_pattern";
+
+            # Run the workload once unmolested as a baseline.
+            my %baseline =
+                test( %workload, name_string => "$ns Baseline" );
+            
+            my $read_tput_KBps = $baseline{'MB/sec Total'} * 1000;
+
+            # Run again, this time with an aggressor process injecting
+            # writes in the background.  The aggressor is rate-limited
+            # to a fraction of the baseline read throughput.
+            foreach my $write_pct ( qw( 5 10 ) )
+            {
+                my $write_tput_KBps =
+                    int ( ( $write_pct / 100 ) * $read_tput_KBps );
+
+                my $bg_ns = "$write_pct% Injected Writes";
+
+                my $cmd = "write_forever.cmd ";
+
+                $cmd .= "-b$block_size ";
+                $cmd .= "-r " if $access_pattern =~ /random/i;
+                $cmd .= "-g$write_tput_KBps "; # Rate limit
+                $cmd .= $target->file_name;
+
+                # We must do our own purge/initialize, so we can "sneak"
+                # the bg_exec in between these steps and the actual test.
+                # If we didn't do this, the purge would occur after the
+                # bg_exec, effectively destroying the target volume and
+                # causing the backgrounded process to die with an error.
+
+                purge();
+                initialize();
+                bg_exec(
+                    description => $bg_ns,
+                    command => $cmd,
+                );
+                test( 
+                    %workload,
+                    name_string => "$ns $bg_ns",
+                    purge => 0,
+                    initialize => 0,
+                );
+                bg_killall();
+            }
+        }
+    }
 }

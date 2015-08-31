@@ -31,39 +31,16 @@ use warnings;
 use Moose;
 use Util;
 
-has 'raw_disk' => (
-    is       => 'ro',
-    isa      => 'Bool',
+has 'target' => (
+    is      => 'ro',
+    isa     => 'Target',
     required => 1
 );
 
-has 'pdnum' => (
-    is  => 'ro',
-    isa => 'Str'
-);
-
-has 'volume' => (
+has 'cmd_line' => (
     is      => 'ro',
-    isa     => 'Maybe[Str]',
-    default => undef
-);
-
-has 'target_file' => (
-    is      => 'ro',
-    isa     => 'Maybe[Str]',
-    default => undef
-);
-
-has 'demo_mode' => (
-    is       => 'ro',
-    isa      => 'Maybe[Bool]',
-    default  => 0
-);
-
-has 'is_target_ssd' => (
-    is      => 'ro',
-    isa     => 'Bool',
-    default => undef
+    isa     => 'CommandLine',
+    required => 1
 );
 
 use constant NORMAL_GATHER_SECONDS => 540;
@@ -78,59 +55,37 @@ use constant QUICK_TEST_MIN_RUN_SECONDS =>
 
 use constant QUICK_TEST_SLOPE_TOLERANCE => 0.5;
 
-sub initialize()
+# Future work: take an arbitrary workload here
+# but override the write-percentage to 100%
+sub write_num_passes
 {
     my $self = shift;
     
-    my $target = $self->raw_disk ? $self->pdnum : $self->target_file;
-      
-    my $num_passes = 1;
+    my %args = @_;
+
+    my $msg_prefix = $args{'msg_prefix'};
+    my $num_passes = $args{'num_passes'};
     
-    if( $self->is_target_ssd and not $self->demo_mode )
-    {
-        if ( $self->raw_disk )
-        {
-            $num_passes = 2;
-        }
-        else
-        {
-            my $file_size;
-            
-            if( $pretend )
-            {
-                # Ficticious 42GB test file for pretend mode
-                $file_size = 42 * BYTES_PER_GB_BASE2;
-            }
-            else
-            {
-                $file_size = -s $self->target_file;
-            }
-
-            $file_size > 0 or die "Target file has zero size?";
-
-            my $vol_size = get_volume_size( $self->volume );
-
-            # We want to dirty all of the NAND, including the OP
-            # to avoid measuring the fresh-out-of-the-box condition.
-            # 
-            # Writing the drive 2x is overkill, but we do it only once.
-            #
-            # Note that in cases where the file is much smaller than
-            # the drive, we will need to write the file many times in
-            # order to write the drive once.
-            $num_passes = int( 2 * ( $vol_size / $file_size ) );
-        }
-    }
-
     # Fake progress message for pretend mode
-    print "Initializing target: 100% [xx.x MB/s]\n" if $pretend;
+    if( $pretend )
+    {
+        print $msg_prefix . "100% [xx.x MB/s]\n";
+    }
 
     my $cmd = "precondition.exe ";
 
     $cmd .= "-n$num_passes ";
-    $cmd .= q(-p"Initializing target: " );
+    $cmd .= qq(-p"$msg_prefix" );
     $cmd .= "-Y ";
-    $cmd .= $target;
+    
+    if( $self->cmd_line->raw_disk )
+    {
+        $cmd .= $self->target->physical_drive;
+    }
+    else
+    {
+        $cmd .= $self->target->file_name;
+    }
 
     my $failed = execute_task( $cmd );
 
@@ -147,12 +102,11 @@ sub run_to_steady_state($)
     my $output_dir = $args{'output_dir'};
     my $test_ref = $args{'test_ref'};
 
-    my $write_percentage = $test_ref->{'write_percentage'};
-    my $access_pattern   = $test_ref->{'access_pattern'};
-    my $block_size       = $test_ref->{'block_size'};
-    my $queue_depth      = $test_ref->{'queue_depth'};
-    
-    my $target = $self->raw_disk ? $self->pdnum : $self->target_file;
+    my $write_percentage = $test_ref->{'write_percentage'} // die;
+    my $access_pattern   = $test_ref->{'access_pattern'} // die;
+    my $block_size       = $test_ref->{'block_size'} // die;
+    my $queue_depth      = $test_ref->{'queue_depth'} // die;
+    my $name_string      = $test_ref->{'name_string'} // die;
 
     my $block_size_kB = human_to_kilobytes( $block_size );
 
@@ -165,7 +119,7 @@ sub run_to_steady_state($)
     $cmd .= "-w$write_percentage ";
     $cmd .= "-ss ";
     
-    if( $self->demo_mode )
+    if( $self->cmd_line->demo_mode )
     {
         $cmd .= "-g" . QUICK_TEST_GATHER_SECONDS . " ";
         $cmd .= "-d" . QUICK_TEST_DWELL_SECONDS . " ";
@@ -174,10 +128,17 @@ sub run_to_steady_state($)
 
     $cmd .= qq(-p"$msg_prefix" );
 
-    $cmd .= $target;
+    if( $self->cmd_line->raw_disk )
+    {
+        $cmd .= $self->target->physical_drive;
+    }
+    else
+    {
+        $cmd .= $self->target->file_name;
+    }
 
     my $out_file =
-        "$output_dir\\precondition-$test_ref->{'name_string'}.txt";
+        "$output_dir\\precondition-$name_string.txt";
     
     open( my $OUT, ">$out_file" )
         or die "could not open $out_file: $!";
@@ -186,7 +147,10 @@ sub run_to_steady_state($)
     print $OUT "$cmd\n";
     
     # Fake progress message for pretend mode
-    print "Preconditioning, achieved steady-state after 0 sec\n" if $pretend;
+    if( $pretend )
+    {
+        print $msg_prefix . "achieved steady-state after 0 sec\n";
+    }
 
     # Don't capture stderr so progress message goes to console
     my ( $errorlevel, $stdout ) = 

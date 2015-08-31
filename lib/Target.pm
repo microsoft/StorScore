@@ -36,6 +36,7 @@ no if $PERL_VERSION >= 5.017011,
 
 use Util;
 use SmartCtlRunner;
+use PreconditionRunner;
 
 has 'cmd_line' => (
     is => 'ro',
@@ -92,25 +93,67 @@ has 'model' => (
     writer => '_model'
 );
 
-has 'must_clean_disk' => (
+has 'do_create_new_filesystem' => (
     is => 'ro',
     isa => 'Bool',
     default => 0,
-    writer => '_must_clean_disk'
+    writer => '_do_create_new_filesystem'
 );
 
-has 'must_create_new_filesystem' => (
+has 'do_create_new_file' => (
     is => 'ro',
     isa => 'Bool',
     default => 0,
-    writer => '_must_create_new_filesystem'
+    writer => '_do_create_new_file'
 );
 
-has 'must_create_new_file' => (
+has 'do_initialize' => (
+    is => 'ro',
+    isa => 'Maybe[Bool]',
+    default => undef,
+    writer => '_do_initialize'
+);
+
+has 'do_purge' => (
+    is => 'ro',
+    isa => 'Maybe[Bool]',
+    default => undef,
+    writer => '_do_purge'
+);
+
+has 'do_precondition' => (
+    is => 'ro',
+    isa => 'Maybe[Bool]',
+    default => undef,
+    writer => '_do_precondition'
+);
+
+has 'precondition_runner' => (
+    is => 'ro',
+    isa => 'Maybe[PreconditionRunner]',
+    default => undef,
+    writer => '_precondition_runner'
+);
+
+has 'is_purged' => (
     is => 'ro',
     isa => 'Bool',
     default => 0,
-    writer => '_must_create_new_file'
+    writer => '_is_purged'
+);
+
+has 'is_prepared' => (
+    is => 'ro',
+    isa => 'Bool',
+    default => 0,
+    writer => '_is_prepared'
+);
+
+has 'is_existing_file_or_volume' => (
+    is => 'ro',
+    isa => 'Bool',
+    default => 1,
+    writer => '_is_existing_file_or_volume'
 );
 
 sub is_ssd()
@@ -167,8 +210,9 @@ sub BUILD
 {
     my $self = shift;
 
-    my $target_str = $self->cmd_line->target;
-    my $raw_disk = $self->cmd_line->raw_disk;
+    my $cmd_line = $self->cmd_line;
+    my $target_str = $cmd_line->target;
+    my $raw_disk = $cmd_line->raw_disk;
 
     if( $target_str =~ /(\\\\\.\\PHYSICALDRIVE)?(\d+)$/ )
     {
@@ -177,28 +221,26 @@ sub BUILD
         die qq(Error: target "$target_str" does not exist.\n)
             unless physical_drive_exists( $self->physical_drive );
 
-        # We *must* ensure the disk is free of any partitions.
-        # Otherwise, writes can silently fail and appear extremely fast.
-        $self->_must_clean_disk( 1 );
+        $self->_is_existing_file_or_volume( 0 );
 
         unless( $raw_disk )
         {
-            $self->_must_create_new_filesystem( 1 );
-            $self->_must_create_new_file( 1 );
+            $self->_do_create_new_filesystem( 1 );
+            $self->_do_create_new_file( 1 );
         }
     }
-    elsif( uc( $target_str ) =~ /^([A-Z]{1}\:)$/ )
+    elsif( uc( $target_str ) =~ /^([A-Z]{1}\:)\\?$/ )
     {
         die "Error: --raw_disk unsupported with existing volumes.\n"
             if $raw_disk;
 
         $self->_volume( $1 );
-       
+    
         my $pdname = volume_to_physical_drive( $self->volume );
         $pdname =~ /(\d+$)/;
         $self->_physical_drive( $1 ); 
 
-        $self->_must_create_new_file( 1 );
+        $self->_do_create_new_file( 1 );
     }
     elsif( -r $target_str or $pretend )
     {
@@ -231,55 +273,108 @@ sub BUILD
         $self->_rotation_rate( $smartctl->rotation_rate );
         $self->_sata_version( $smartctl->sata_version );
     }
+  
+    if( $self->is_existing_file_or_volume )
+    {
+        # Targeting an existing file/volume, not a whole physical drive.
+        # We cannot purge without destroying the existing file/volume.
+        $self->_do_purge( 0 );
+    }
+    else
+    {
+        # Targeting a whole physical drive, not an existing volume.
+        # Purge by default, unless the command line specified otherwise.
+        $self->_do_purge( $cmd_line->purge // 1 );
+    }
+
+    # Default policy (can be overridden by command line):
+    #   SSD: both precondition and initialize
+    #   HDD: do not precondition or initialize
+    $self->_do_initialize( $cmd_line->initialize // $self->is_ssd );
+    $self->_do_precondition( $cmd_line->precondition // $self->is_ssd );
+    
+    $self->_precondition_runner(
+        PreconditionRunner->new(
+            cmd_line => $cmd_line,
+            target   => $self
+        ) 
+    );
 }   
+
+sub purge
+{
+    my $self = shift;
+    my %args = @_;
+
+    my $msg_prefix = $args{'msg_prefix'} // die;
+   
+    print $msg_prefix;
+
+    if( $self->is_purged )
+    {
+        print "Skipping purge of already-purged target\n";
+        return;
+    }
+    
+    if( $self->is_existing_file_or_volume )
+    {
+        print "Skipping purge of existing file/volume\n";
+        return;
+    }
+    
+    unless( $self->do_purge )
+    {
+        my $skip_requested =
+            ( defined $self->cmd_line->purge and
+                ( $self->cmd_line->purge == 0 ) );
+
+        if( $skip_requested ) 
+        {
+            print "Skipping purge as requested\n";
+        }
+        else
+        {
+            print "Skipping purge\n";
+        }
+
+        return;
+    }
+        
+    print "Purging\n"; 
+
+    # TODO: SECURE ERASE 
+    #
+    # When the target is an SSD, we should SECURE ERASE here instead of
+    # the "diskpart clean":
+
+    clean_disk( $self->physical_drive );
+
+    $self->_is_purged( 1 );
+    $self->_is_prepared( 0 );
+}
 
 sub prepare
 {
     my $self = shift;
 
-    if( $self->must_clean_disk )
+    return if $self->is_prepared;
+
+    if( $self->do_create_new_filesystem )
     {
-        # TODO: SECURE ERASE 
-        #
-        # When the target is an SSD, we should SECURE ERASE here instead of
-        # the "diskpart clean":
-        #
-        #  if( $self->is_ssd )
-        #  {
-        #      print "Secure erasing disk...\n";
-        #      secure_erase( $self->physical_drive );
-        #  }
-        #  else
-        #  {
-        #      print "Cleaning disk...\n";
-        #      clean_disk( $self->physical_drive );
-        #  }
-
-        print "Cleaning disk...\n";
-
-        clean_disk( $self->physical_drive );
-    }
-
-    if( $self->must_create_new_filesystem )
-    {
-        print "Creating new filesystem...\n";
-
         create_filesystem(
             $self->physical_drive,
             $self->cmd_line->partition_bytes
         );
-
+    
         $self->_volume( physical_drive_to_volume( $self->physical_drive ) );
     }
 
-    if( $self->must_create_new_file )
+    if( $self->do_create_new_file )
     {
-        print "Creating test file...\n";
-
         my $free_bytes = get_volume_free_space( $self->volume );
 
         die "Couldn't determine free space"
-        unless defined $free_bytes;
+            unless defined $free_bytes;
 
         # Reserve 1GB right off the top.
         # When we tried to use the whole drive, we saw odd errors.
@@ -308,28 +403,131 @@ sub prepare
 
     if( defined $self->volume )
     {
-        print "Syncing target volume...\n";
-        
         execute_task( "sync.cmd " . $self->volume, quiet => 1 );
     }
 
-    if( $self->cmd_line->initialize )
-    {
-        my $pc = PreconditionRunner->new(
-            raw_disk        => $self->cmd_line->raw_disk,
-            pdnum           => $self->physical_drive,
-            volume          => $self->volume,
-            target_file     => $self->file_name,
-            demo_mode       => $self->cmd_line->demo_mode,
-            is_target_ssd   => $self->is_ssd
-        );
+    $self->_is_purged( 0 );
+    $self->_is_prepared( 1 );
+}
 
-        $pc->initialize();
+sub calculate_num_init_passes
+{
+    my $self = shift;
+   
+    # Go fast in demo mode
+    return 1 if $self->cmd_line->demo_mode;
+
+    # For HDD: if we choose to initialize, one pass is sufficient
+    return 1 if $self->is_hdd;
+   
+    # For SSD: we want to dirty all of the NAND, including the OP
+    # to avoid measuring the fresh-out-of-the-box condition.
+    # 
+    # Writing the drive 2x is overkill, but we do it only once.
+    #
+    # Note that in cases where the file is much smaller than
+    # the drive, we will need to write the file many times in
+    # order to write the drive once.
+
+    return 2 if $self->cmd_line->raw_disk;
+
+    my $file_size;
+
+    if( $pretend )
+    {
+        # Ficticious 42GB test file for pretend mode
+        $file_size = 42 * BYTES_PER_GB_BASE2;
     }
     else
     {
-        print "Skipping initialization as requested.\n";
+        $file_size = -s $self->file_name;
     }
+
+    $file_size > 0 or die "Target file has zero size?";
+
+    my $vol_size = get_volume_size( $self->volume );
+
+    return( int( 2 * ( $vol_size / $file_size ) ) );
+}
+
+# Similar to SNIA "workload independent preconditioning"
+sub initialize
+{
+    my $self = shift;
+    
+    my %args = @_;
+
+    my $msg_prefix = $args{'msg_prefix'} // die;
+    my $test_ref = $args{'test_ref'};
+   
+    if( defined $test_ref )
+    {
+        # Future work: allow for custom init pattern
+        ...
+    }
+    
+    unless( $self->do_initialize )
+    {
+        my $skip_requested =
+            ( defined $self->cmd_line->initialize and
+                ( $self->cmd_line->initialize == 0 ) );
+
+        if( $skip_requested )
+        {
+            print $msg_prefix . "Skipping initialization as requested\n";
+        }
+        else
+        {
+            print $msg_prefix . "Skipping initialization\n";
+        }
+        
+        return;
+    }
+
+    $self->prepare() unless $self->is_prepared();
+   
+    $self->precondition_runner->write_num_passes(
+        msg_prefix => $msg_prefix . "Initializing: ",
+        num_passes => $self->calculate_num_init_passes(),
+    );
+}
+
+# Similar to SNIA "workload dependent preconditioning"
+sub precondition
+{
+    my $self = shift;
+
+    my %args = @_;
+
+    my $msg_prefix = $args{'msg_prefix'} // die;
+    my $output_dir = $args{'output_dir'} // die;
+    my $test_ref = $args{'test_ref'} // die;
+    
+    unless( $self->do_precondition )
+    {
+        my $skip_requested =
+            ( defined $self->cmd_line->precondition and
+                ( $self->cmd_line->precondition == 0 ) );
+
+        if( $skip_requested )
+        {
+            print $msg_prefix . "Skipping preconditioning as requested\n";
+        }
+        else
+        {
+            print $msg_prefix . "Skipping preconditioning\n";
+        }
+        
+        return;
+    }
+    
+    $self->prepare() unless $self->is_prepared();
+   
+    $self->precondition_runner->run_to_steady_state(
+        msg_prefix => $msg_prefix . "Preconditioning: ",
+        output_dir => $output_dir,
+        test_ref => $test_ref
+    );
 }
 
 no Moose;

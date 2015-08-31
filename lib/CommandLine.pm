@@ -65,13 +65,23 @@ has 'recipe' => (
     writer  => '_recipe'
 );
 
+# In most cases you really want $target->do_purge
+has 'purge' => (
+    is  => 'ro',
+    isa => 'Maybe[Bool]',
+    default => undef,
+    writer  => '_purge'
+);
+
+# In most cases you really want $target->do_initialize
 has 'initialize' => (
     is  => 'ro',
-    isa => 'Bool',
-    default => 1,
+    isa => 'Maybe[Bool]',
+    default => undef,
     writer  => '_initialize'
 );
 
+# In most cases you really want $target->do_precondition
 has 'precondition' => (
     is  => 'ro',
     isa => 'Maybe[Bool]',
@@ -234,7 +244,12 @@ sub attr
     my $name = shift;
     my $val = shift;
 
-    my $retval = eval( qq(\$self->_$name( '$val' );) );
+    # The command line argument may contain backslashes,
+    # for example, in --target.  We must escape them, 
+    # before we eval, by converting "\" to "\\" here.
+    $val =~ s|\\|\\\\|g;
+
+    my $retval = eval( qq(\$self->_$name( q($val) );) );
 
     die $EVAL_ERROR unless defined $retval;
 }
@@ -253,6 +268,7 @@ sub BUILD
         "recipe=s"               => sub { $self->attr(@_) },  
         "verbose!"               => \$verbose,
         "pretend!"               => \$pretend,
+        "purge!"                 => sub { $self->attr(@_) },  
         "initialize!"            => sub { $self->attr(@_) },  
         "precondition!"          => sub { $self->attr(@_) },  
         "prompt!"                => \$prompt,
@@ -408,16 +424,18 @@ USAGE
   $script_name [options] 
 
 OPTIONS
-  --target          Indicates the drive or file to test (required)
-  --initialize      Write the whole drive before testing.  Defaults to true.
-  --precondition    Performs workload-dependent preconditioning. Defaults to true.
-  --recipe=A.rcp    Use the test list defined in "A.rcp"
-  --collect_smart   Collect drive's SMART metadata. Defaults to true.
-  --collect_logman  Collect performance counters from logman. Defaults to true.
-  --collect_power   Collect system power usage statistics. Defaults to true.
+  --target          Indicates the drive or file to test (required).
+  --purge           Erase target before test. Default off for existing volumes.
+  --initialize      Write whole target before testing. Defaults on for SSD.
+  --precondition    Drive to steady-state before test. Defaults on for SSD.
+  --recipe=A.rcp    Use the test list defined in "A.rcp".
+  --collect_smart   Collect drive's SMART metadata. Defaults on.
+  --collect_logman  Collect performance counters from logman. Defaults on. 
+  --collect_power   Collect system power usage statistics. Defaults on.
   --keep_logman_raw Prevent StorScore from deleting the logman data files.
-  --target_type     Force target type to "ssd" or "hdd". Defaults to "auto".
-  --start_on_step=n Begin testing on step n of the recipe.
+  --target_type     Force target type to "ssd" or "hdd". Defaults on.
+  --start_on_step=n Start testing on step n of the recipe.
+  --stop_on_step=n  Stop testing on step n of the recipe.
   --pretend         For testing, run without touching the target at all.
   
 EXAMPLES

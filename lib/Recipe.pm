@@ -33,8 +33,12 @@ use English;
 use feature 'state';
 use POSIX 'strftime';
 use Symbol 'delete_package';
+use Text::Balanced 'extract_bracketed';
 use Cwd;
 use Util;
+use PreconditionRunner;
+use DiskSpdParser;
+use SqlioParser;
 
 no if $PERL_VERSION >= 5.017011, 
     warnings => 'experimental::smartmatch';
@@ -67,13 +71,6 @@ has 'recipe_string' => (
     is  => 'ro',
     isa => 'Str',
     writer => '_recipe_string'
-);
-
-has 'do_precondition' => (
-    is      => 'ro',
-    isa     => 'Bool',
-    default => 1,
-    writer  => '_do_precondition'
 );
 
 has 'steps' => (
@@ -120,7 +117,7 @@ has 'current_step' => (
     },
 );
 
-has 'bg_pids' => (
+has 'bg_processes' => (
     is  => 'ro',
     isa => 'ArrayRef',
     default => sub { [] },
@@ -193,16 +190,17 @@ sub canonicalize_step
     my $step_ref = shift;
 
     my $kind = $step_ref->{'kind'};
-    
-    return unless $kind eq 'test';
+    my $number = $step_ref->{'number'};
+
+    return unless $kind ~~ [qw( test precondition )]; 
 
     # create read_percentage from write_percentage
     $step_ref->{'read_percentage'} =
         100 - $step_ref->{'write_percentage'};
 
-    # ensure name_string can be used as a filename
+    # ensure name_string can be used as a unique filename
     $step_ref->{'name_string'} =
-        make_legal_filename( $step_ref->{'name_string'} );
+        make_legal_filename( $step_ref->{'name_string'} . "-step-$number" );
 }
 
 sub apply_overrides
@@ -229,21 +227,24 @@ sub apply_overrides
 sub make_step
 {
     my $kind = shift;
+    my $number = shift;
     my @args = @_;
-      
-    # test uses named-parameter idiom
-    return ( kind => $kind, @args ) if $kind eq 'test'; 
+
+    my %step_args;
+
+    # Every step records its kind and number
+    $step_args{'kind'} = $kind;
+    $step_args{'number'} = $number;
+    
+    # These kinds use the named-parameter idiom
+    %step_args = ( %step_args, @args )
+        if $kind ~~ [qw( test initialize precondition bg_exec )]; 
    
-    # bg_exec has a single unnamed argument, the command
-    return ( kind => $kind, command => shift @args )
-        if $kind eq 'bg_exec';
-        
     # idle has a single unnamed argument, the time
-    return ( kind => $kind, run_time => shift @args )
+    %step_args = ( %step_args, run_time => shift @args )
         if $kind eq 'idle';
 
-    # default: no arguments, just store the kind
-    return ( kind => $kind );
+    return %step_args; 
 }
 
 sub handle_step
@@ -254,27 +255,46 @@ sub handle_step
     my $do_warnings = shift;
     my $kind = shift;
     my @step_args = @_;
-    
-    my %step = make_step( $kind, @step_args );
+   
+    my $step_number = $self->current_step;
+
+    my %step = make_step( $kind, $step_number, @step_args );
 
     canonicalize_step( \%step );
     $self->apply_overrides( \%step );
     $self->warn_illegal_args( \%step ) if $do_warnings;
-   
+    
+    # Keep track of the context in which we were called
+    my $context;
+    $context = 'list' if wantarray;
+    $context = 'void' unless defined wantarray;
+    $context = 'scalar' unless wantarray;
+
+    my $scalar_retval;
+    my @list_retval; 
+
     my $is_legal = $self->try_legalize_arguments( \%step );
 
     if( $is_legal )
     {
-        $callback->( %step );
+        # Carry forward our caller's context
+        $callback->( %step ) if $context eq 'void';
+        $scalar_retval = $callback->( %step ) if $context eq 'scalar';
+        @list_retval = $callback->( %step ) if $context eq 'list';
+
         $self->advance_current_step();
     }
+    
+    return $scalar_retval if $context eq 'scalar';
+    return @list_retval if $context eq 'list';
 }
 
-sub generate_header($$$)
+sub generate_header($$$$)
 {
     my $file_name = shift;
     my $package = shift;
     my $be_permissive = shift;
+    my $be_quiet = shift;
 
     my $header = <<"HEADER";
         package $package;
@@ -297,10 +317,32 @@ HEADER
         $header .= "no warnings 'prototype';\n";
     }
 
+    if( $pretend )
+    {
+        # Hide warning "Use of unitialized value"
+        $header .= "no warnings 'uninitialized';\n";
+    }
+
+    if( $be_quiet )
+    {
+        # Replace STDOUT and STDERR with NUL
+        $header .= "local *STDOUT; open STDOUT, '>NUL';\n";
+        $header .= "local *STDERR; open STDERR, '>NUL';\n";
+    }
+
     # Improve the quality of diagnostic messages
     $header .= qq(\n# line 1 "$file_name"\n);
     
     return $header;
+}
+
+sub generate_footer
+{
+    my $footer = <<"FOOTER";
+        1; # Return true if everything goes well
+FOOTER
+
+    return $footer;
 }
 
 sub execute_recipe
@@ -313,13 +355,15 @@ sub execute_recipe
 
     my $recipe_warnings = $args{'recipe_warnings'} // 0;
     my $permissive_perl = $args{'permissive_perl'} // 0;
+    my $quiet_stdio = $args{'quiet_stdio'} // 0;
 
     state $eval_count = 0;
 
     # Throw-away package to "insulate" us from the eval code
     my $package = "RecipeEval" . $eval_count++;
 
-    my @step_kinds = qw(test bg_exec bg_killall idle);
+    my @step_kinds = 
+        qw(test purge initialize precondition bg_exec bg_killall idle);
 
     {
         no strict 'refs';
@@ -331,7 +375,7 @@ sub execute_recipe
 
             *$sym = sub
             {
-                $self->handle_step(
+                return $self->handle_step(
                     $callback,
                     $recipe_warnings,
                     $kind,
@@ -347,10 +391,36 @@ sub execute_recipe
         { 
             my $file_name = shift;
        
-            my $eval_string =
-                generate_header( $file_name, $package, $permissive_perl );
+            # Emulate the behavior of Perl's require statement
+            foreach my $prefix (@INC)
+            {
+                if( -e "$prefix\\$file_name" )
+                {
+                    $file_name = "$prefix\\$file_name";
+                    last;
+                }
+            }
 
-            $eval_string .= slurp_file( $file_name );
+            my $recipe_str = slurp_file( $file_name );
+
+            # For SSD: expand test macros to follow proper methodology
+            # We must do this every time we include a new file.
+            $recipe_str = $self->expand_test_macro( $recipe_str )
+                if $self->target->is_ssd();
+       
+            my $eval_string;
+
+            $eval_string .= 
+                generate_header(
+                    $file_name,
+                    $package,
+                    $permissive_perl,
+                    $quiet_stdio
+                );
+            
+            $eval_string .= $recipe_str;
+            
+            $eval_string .= generate_footer();
 
             my $retval = eval( $eval_string );
 
@@ -368,12 +438,20 @@ sub execute_recipe
     my $previous_cwd = getcwd();
     chdir( $recipes_dir );
 
+    my $eval_string;
+
     # Prefix our header to recipe string
-    my $eval_string =
-        generate_header( $self->file_name, $package, $permissive_perl );
+    $eval_string =
+        generate_header(
+            $self->file_name,
+            $package,
+            $permissive_perl,
+            $quiet_stdio
+        );
 
     $eval_string .= $self->recipe_string;
-   
+    $eval_string .= generate_footer();
+
     # Eval recipe code with our hooks installed
     my $retval = eval( $eval_string );
     die $EVAL_ERROR unless defined $retval;
@@ -428,7 +506,7 @@ sub estimate_run_time(;$)
         $total += $self->calculate_step_run_time( $step_ref );
     }
    
-    if( $self->do_precondition )
+    if( $self->target->do_precondition )
     {
         foreach my $step_ref ( @{$self->steps} )
         {
@@ -456,17 +534,84 @@ sub contains_writes()
     return 0;
 }
 
+sub prefix_target_init
+{
+    my $self = shift;
+    my $input = shift;
+    
+    my $str = "";
+
+    # It's important that we don't add extra newlines otherwise
+    # error messages may reference the wrong recipe line number.
+    $str .= "purge();" if $self->target->do_purge;
+    $str .= "initialize();" if $self->target->do_initialize;
+
+    return $str . $input;
+}
+
+sub get_test_macro_string
+{
+    my $self = shift;
+    my $test_args = shift;
+   
+    my $str;
+   
+    # It's important that we don't add extra newlines otherwise
+    # error messages may reference the wrong recipe line number.
+    $str .= q( do { );
+    $str .= q( my %args = ) . $test_args . ';';
+
+    $str .= q( purge() if $args{'purge'} // 1; )
+        if $self->target->do_purge;
+
+    $str .= q( initialize() if $args{'initialize'} // 1; )
+        if $self->target->do_initialize;
+
+    $str .= q( precondition( %args ) if $args{'precondition'} // 1; )
+        if $self->target->do_precondition;
+
+    $str .= q( test( %args ); );
+    $str .= q( } );
+
+    return $str;
+}
+
+sub expand_test_macro
+{
+    my $self = shift;
+    my $input = shift;
+    my $output;
+    
+    while( $input =~ s/(.*?)\btest(\(.*)/$2/s )
+    {
+        $output .= $1;
+
+        my $test_args = extract_bracketed( $input, '()' );
+        die $EVAL_ERROR unless defined $test_args;
+    
+        $output .= $self->get_test_macro_string( $test_args );
+    }
+
+    $output .= $input; # Handle remainder
+    
+    return $output;
+}
+
 sub BUILD
 {
     my $self = shift;
     
-    $self->_recipe_string( slurp_file( $self->file_name ) );
+    my $recipe_str = slurp_file( $self->file_name );
 
-    # Default behavior is to precondition to steady-state when targeting 
-    # an SSD. Allow the command line to override this with --noprecondition.
-    $self->_do_precondition(
-        $self->cmd_line->precondition // $self->target->is_ssd
-    );
+    # For HDD: do this exactly once before running the recipe
+    $recipe_str = $self->prefix_target_init( $recipe_str )
+        if $self->target->is_hdd();
+
+    # For SSD: expand test macros to follow proper methodology
+    $recipe_str = $self->expand_test_macro( $recipe_str )
+        if $self->target->is_ssd();
+
+    $self->_recipe_string( $recipe_str );
 
     # Phase 1: Parse the recipe to estimate runtime, etc.
     #
@@ -477,7 +622,8 @@ sub BUILD
     $self->execute_recipe(
         recipe_warnings => 1,
         permissive_perl => 1,
-        callback        => sub { push @{$self->steps}, {@_}; }
+        quiet_stdio => 1,
+        callback => sub { push @{$self->steps}, {@_}; }
     );
 }
 
@@ -504,9 +650,21 @@ sub get_time_message
     return $msg;
 }
 
+sub get_announcement_style
+{
+    my $step_ref = shift;
+    
+    my $kind = $step_ref->{'kind'};
+
+    # These step "kinds" announce their own progress
+    return 'internal'
+        if $kind ~~ [qw( purge precondition initialize )];
+
+    return 'external';
+}
+
 sub get_announcement_message
 {
-    my $self = shift;
     my $step_ref = shift;
     
     my $msg;
@@ -526,77 +684,129 @@ sub get_announcement_message
     } 
     elsif( $step_ref->{'kind'} eq 'idle' )
     {
-        $msg = "Idling...";
+        $msg = "Idling";
     }
     elsif( $step_ref->{'kind'} eq 'bg_exec' )
     {
         my $command = $step_ref->{'command'};
-        $msg = qq{Executing "$command" in the background...};
+        $msg = qq{Executing "$command" in the background};
     }
     elsif( $step_ref->{'kind'} eq 'bg_killall' )
     {
-        $msg = "Killing all background processes...";
+        $msg = "Killing all background processes";
     }
 
     return $msg;
+}
+
+sub bg_killall
+{
+    my $self = shift;
+
+    foreach my $proc ( @{$self->bg_processes} )
+    {
+        my $pid = $proc->{'pid'};
+        kill_task( $pid );
+    }
+    
+    @{$self->bg_processes} = ();
 }
 
 sub run_step
 {
     my $self = shift;
     my $step_ref = shift;
-
+        
     my $kind = $step_ref->{'kind'};
 
-    # TODO: SECURE ERASE 
-    #
-    # In the future when we support SECURE ERASE, here we will add: 
-    #    $target->prepare() if $target->is_ssd();
+    # Keep track of the context in which we were called
+    my $context;
+    $context = 'list' if wantarray;
+    $context = 'void' unless defined wantarray;
+    $context = 'scalar' unless wantarray;
 
-    if( $kind eq 'test' and $self->do_precondition )
-    {
-        my $pc = PreconditionRunner->new(
-            raw_disk        => $self->cmd_line->raw_disk,
-            pdnum           => $self->target->physical_drive,
-            volume          => $self->target->volume,
-            target_file     => $self->target->file_name,
-            demo_mode       => $self->cmd_line->demo_mode,
-            is_target_ssd   => $self->target->is_ssd
-        );
+    my $scalar_retval;
+    my @list_retval;
 
-        $pc->run_to_steady_state(
-            msg_prefix => "Preconditioning, ",
-            output_dir => $self->output_dir,
-            test_ref   => $step_ref
-        );
-    }
+    my $num_step_digits = length( $self->get_num_steps );
     
     my $progress = sprintf( 
-        "[%3d/%3d] ", $self->current_step, $self->get_num_steps );
+        "%${num_step_digits}d/%${num_step_digits}d: ",
+        $self->current_step, $self->get_num_steps
+    );
 
-    my $announce = $self->get_announcement_message( $step_ref );
-    
-    my $time = $self->get_time_message( $step_ref );
+    my $announcement_style = get_announcement_style( $step_ref );
 
-    my $cols_remaining = 80;
-    
-    $cols_remaining -=
+    if( $announcement_style eq 'external' )
+    {
+        my $announce = get_announcement_message( $step_ref );
+
+        my $time = $self->get_time_message( $step_ref );
+
+        my $cols_remaining = 80;
+
+        $cols_remaining -=
         length( $progress ) +
         length( $announce ) +
         length( $time ) + 1;
 
-    my $pad = ' ' x $cols_remaining;
+        my $pad = ' ' x $cols_remaining;
 
-    print $progress . $announce . $pad . $time;
+        print $progress . $announce . $pad . $time;
+    }
 
-    if( $kind eq 'test' )
+    if( $kind eq 'purge' )
     {
+        $self->target->purge(
+            msg_prefix => $progress,
+        );
+    }
+    elsif( $kind eq 'initialize' )
+    {
+        $self->target->initialize(
+            msg_prefix => $progress,
+        );
+    }
+    elsif( $kind eq 'precondition' )
+    {
+        $self->target->precondition( 
+            msg_prefix => $progress,
+            output_dir => $self->output_dir,
+            test_ref => $step_ref
+        );
+    }
+    elsif( $kind eq 'test' )
+    {
+        $self->target->prepare()
+            unless $self->target->is_prepared();
+        
+        unless( $pretend )
+        {
+            die "Attempt to test non-existent target file?\n"
+                unless -e $self->target->file_name;
+        }
+
+        my $ns = $step_ref->{'name_string'};
+  
+        # Record background activity, if any, during this test
+        if( scalar @{$self->bg_processes} > 0 )
+        {
+            open my $FH, '>', $self->output_dir . "\\background-$ns.txt";
+
+            foreach my $proc ( @{$self->bg_processes} )
+            {
+                print $FH $proc->{'description'} . "\n";
+                print $FH $proc->{'command'} . "\n";
+                print $FH $proc->{'pid'} . "\n\n";
+            }
+
+            close $FH;
+        }
+
         if( $step_ref->{'warmup_time'} > 0 )
         {
             $self->io_generator->run( $step_ref, 'warmup' );
         }
-
-        my $ns = $step_ref->{'name_string'};
 
         $self->smartctl_runner->collect(
             file_name => "smart-before-$ns.txt",
@@ -626,6 +836,38 @@ sub run_step
 
         $self->logman_runner->stop() if defined $self->logman_runner;
         $self->power->stop() if defined $self->power;
+            
+        # If test() called in list context, parse and return results
+        if( $context eq 'list' )
+        {
+            my $iogen_parser;
+
+            $iogen_parser = DiskSpdParser->new()
+                if $self->cmd_line->io_generator eq 'diskspd';
+            
+            $iogen_parser = SqlioParser->new()
+                if $self->cmd_line->io_generator eq 'sqlio';
+  
+            # ISSUE-REVIEW: is this guaranteed to be correct?
+            my $iogen_outfile = $self->output_dir . "\\test-$ns.txt";
+
+            open my $IOGEN_OUT, "<$iogen_outfile" 
+                or die "Error opening $iogen_outfile";
+
+            my %stats;
+
+            $iogen_parser->parse( $IOGEN_OUT, \%stats );
+
+            @list_retval = %stats;
+
+            close $IOGEN_OUT;
+        }
+
+        # Allow test to specify that output files be discarded
+        my $discard_results = $step_ref->{'discard_results'} // 0;
+
+        unlink( glob( $self->output_dir . "\\*$ns*" ) )
+            if $discard_results;
     }
     elsif( $kind eq 'idle' )
     {
@@ -635,6 +877,23 @@ sub run_step
     }
     elsif( $kind eq 'bg_exec' )
     {
+        # ISSUE-REVIEW: 
+        # 
+        # Ensure that the target file exists to support stuff like
+        #    purge();
+        #    bg_exec( do something to target file here );
+        #
+        # Does this make sense in a general purpose bg_exec?
+        
+        $self->target->prepare()
+            unless $self->target->is_prepared();
+        
+        unless( $pretend )
+        {
+            die "Attempt to test non-existent target file?\n"
+                unless -e $self->target->file_name;
+        }
+
         my $command = $step_ref->{'command'};
         
         my $pid = execute_task(
@@ -642,16 +901,25 @@ sub run_step
             background => 1,
             new_window => 1
         ); 
+        
+        my $description = $step_ref->{'description'};
 
-        push @{$self->bg_pids}, $pid;
+        push @{$self->bg_processes}, {
+            pid => $pid,
+            command => $command,
+            description => $description
+        };
+
     }
     elsif( $kind eq "bg_killall" )
     {
-        kill_task( $_ ) foreach @{$self->bg_pids};
-        @{$self->bg_pids} = ();
+        $self->bg_killall();
     }
 
-    print "\n";
+    print "\n" if $announcement_style eq 'external';
+    
+    return $scalar_retval if $context eq 'scalar';
+    return @list_retval if $context eq 'list';
 }
 
 sub run
@@ -678,13 +946,17 @@ sub run
             unless( ($self->current_step < $self->cmd_line->start_on_step) or
                     ($self->current_step > $self->cmd_line->stop_on_step) )
             {
-                $self->run_step( {@_} );
+                return $self->run_step( {@_} );
             }
+    
+            # Maintain proper context on skipped steps.
+            # Avoids "Odd number of elements in hash assignment" warning.
+            return () if wantarray;
         }
     );
 
     # kill any leftover background processes        
-    kill_task( $_ ) foreach @{$self->bg_pids};
+    $self->bg_killall();
 }
 
 sub warn_expected_run_time
@@ -692,7 +964,7 @@ sub warn_expected_run_time
     my $self = shift;
 
     my $num_pc =
-        $self->do_precondition ? $self->get_num_test_steps() : 0;
+        $self->target->do_precondition ? $self->get_num_test_steps() : 0;
 
     my $est_pc_time = 0;
    
@@ -715,24 +987,20 @@ sub warn_expected_run_time
             $self->estimate_run_time( $est_pc_time )
         );
 
-    print "\tRun time will be >= $time_string";
+    print "\tRun time will be >= $time_string.\n";
     
-    if( $self->cmd_line->initialize )
+    if( $self->target->do_initialize )
     {
-        print " after target init";
+        print "\tThis does not include target init ";
 
         if( $self->target->is_ssd )
         {
-            print " (2 overwrites).\n";
+            print "(2 overwrites per-test).\n";
         }
         else
         {
-            print " (1 overwrite).\n";
+            print "(1 overwrite).\n";
         }
-    }
-    else
-    {
-        print ".\n";
     }
     
     if( $num_pc > 0 )
