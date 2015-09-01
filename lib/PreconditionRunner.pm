@@ -106,7 +106,7 @@ sub run_to_steady_state($)
     my $access_pattern   = $test_ref->{'access_pattern'} // die;
     my $block_size       = $test_ref->{'block_size'} // die;
     my $queue_depth      = $test_ref->{'queue_depth'} // die;
-    my $name_string      = $test_ref->{'name_string'} // die;
+    my $description      = $test_ref->{'description'} // die;
 
     my $block_size_kB = human_to_kilobytes( $block_size );
 
@@ -138,7 +138,7 @@ sub run_to_steady_state($)
     }
 
     my $out_file =
-        "$output_dir\\precondition-$name_string.txt";
+        "$output_dir\\precondition-$description.txt";
     
     open( my $OUT, ">$out_file" )
         or die "could not open $out_file: $!";

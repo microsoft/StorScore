@@ -273,8 +273,8 @@ sub compute_steady_state_error_and_warn($)
     # Complain if the relative difference is greater than 10%
     unless( $rel_diff <= 10 )
     {
-        my $test_name = $stats_ref->{'Test Name'};
-        warn "\tPrecondition didn't achieve steady-state? $test_name\n";
+        my $test_desc = $stats_ref->{'Test Description'};
+        warn "\tPrecondition didn't achieve steady-state? $test_desc\n";
 
         $stats_ref->{'Notes'} .= "No steady-state?; ";
     }
@@ -339,7 +339,7 @@ my @cols =
     { name => 'Display Name'},
     { name => 'User Capacity (GB)' },
     { name => 'Partition Size (GB)' },
-    { name => 'Test Name' },
+    { name => 'Test Description' },
     {
         name   => 'Timestamp',
         format => 'mm/dd/yyyy HH:mm:ss',
@@ -637,7 +637,7 @@ sub parse_directories(@)
             $file_stats{'Log File'} =
                 "external:$dir\\$test_file_name";
             
-            $file_stats{'Test Name'} = $base_name;
+            $file_stats{'Test Description'} = $base_name;
 
             generate_timestamp( $base_name, \%file_stats );
     
@@ -716,7 +716,7 @@ sub parse_directories(@)
             {
                 my $power = Power->new(
                     output_dir  => $dir,
-                    name_string => $file_stats{'Test Name'},
+                    description => $file_stats{'Test Description'},
                 );
 
                 $power->parse( \%file_stats ) or $try_power = 0;
@@ -778,22 +778,22 @@ sub get_io_pattern_cols()
         @cols;
 }
 
-my %test_name_to_io_pattern;
+my %test_description_to_io_pattern;
 
-sub build_test_name_to_io_pattern_hash(@)
+sub build_test_description_to_io_pattern_hash(@)
 {
     my @all_stats = @_;
    
     foreach my $stats_ref ( @all_stats )
     {
-        my $test_name = $stats_ref->{'Test Name'};
+        my $test_desc = $stats_ref->{'Test Description'};
 
-        next if defined $test_name_to_io_pattern{$test_name};
+        next if defined $test_description_to_io_pattern{$test_desc};
 
         my %fields =
             map { $_ => $stats_ref->{$_} } get_io_pattern_cols(); 
 
-        $test_name_to_io_pattern{$test_name} = \%fields
+        $test_description_to_io_pattern{$test_desc} = \%fields
     }
 }
 
@@ -1042,14 +1042,14 @@ sub build_device_id_to_display_name(@)
 }
 
 my @unique_device_ids;
-my @unique_test_names;
-my @common_test_names;
+my @unique_test_descriptions;
+my @common_test_descriptions;
 
 sub post_process_stats(\@)
 {
     my @all_stats = @{+shift};
    
-    build_test_name_to_io_pattern_hash( @all_stats );
+    build_test_description_to_io_pattern_hash( @all_stats );
     get_friendly_names( @all_stats );
     inject_default_compressibility( @all_stats );
     build_display_names( @all_stats );
@@ -1059,22 +1059,22 @@ sub post_process_stats(\@)
     @unique_device_ids = 
         uniq map { $_->{'Unique Device ID'} } @all_stats;
 
-    my %test_name_occurrences;
+    my %test_description_occurrences;
    
     foreach my $stats_ref ( @all_stats )
     {
-        my $test_name = $stats_ref->{'Test Name'};
-        $test_name_occurrences{$test_name}++;
+        my $test_desc = $stats_ref->{'Test Description'};
+        $test_description_occurrences{$test_desc}++;
     }
     
-    @unique_test_names = keys %test_name_occurrences;
+    @unique_test_descriptions = keys %test_description_occurrences;
 
-    foreach my $test_name ( @unique_test_names )
+    foreach my $test_desc ( @unique_test_descriptions )
     {
-        if( $test_name_occurrences{$test_name} ==
+        if( $test_description_occurrences{$test_desc} ==
             scalar @unique_device_ids )
         {
-            push @common_test_names, $test_name;
+            push @common_test_descriptions, $test_desc;
         }
     }
 
@@ -1107,7 +1107,7 @@ sub median_abs_deviation($\@)
 
 sub compute_outlier_bounds($$\@)
 {
-    my $test_name = shift;
+    my $test_desc = shift;
     my $col_name = shift;
     my @values = @{+shift};
 
@@ -1144,22 +1144,22 @@ sub compute_outlier_bounds($$\@)
     return ( $lower, $upper );
 }
 
-sub filter_by_test_name($\@)
+sub filter_by_test_description($\@)
 {
-    my $test_name = shift;
+    my $test_desc = shift;
     my @all_stats = @{+shift};
 
     return
-        grep { $_->{'Test Name'}{'value'} eq $test_name } @all_stats;
+        grep { $_->{'Test Description'}{'value'} eq $test_desc } @all_stats;
 }
 
 sub get_matching_values($$\@)
 {
-    my $test_name = shift;
+    my $test_desc = shift;
     my $col_name = shift;
     my @all_stats = @{+shift};
 
-    my @matching = filter_by_test_name( $test_name, @all_stats );
+    my @matching = filter_by_test_description( $test_desc, @all_stats );
 
     return 
         grep { defined $_ } # prune undefined vals
@@ -1201,7 +1201,7 @@ sub find_outliers($\@)
    
     my %outliers;
 
-    foreach my $test_name ( @unique_test_names )
+    foreach my $test_desc ( @unique_test_descriptions )
     {
         foreach my $col ( @cols )
         {
@@ -1211,15 +1211,15 @@ sub find_outliers($\@)
             next unless defined $col_sense; 
 
             my @values = 
-                get_matching_values( $test_name, $col_name, @all_stats );
+                get_matching_values( $test_desc, $col_name, @all_stats );
 
             next unless scalar @values > 0;
 
             my ( $lower, $upper ) = 
-                compute_outlier_bounds( $test_name, $col_name, @values );
+                compute_outlier_bounds( $test_desc, $col_name, @values );
            
             foreach my $test_stats ( 
-                filter_by_test_name( $test_name, @all_stats ) )
+                filter_by_test_description( $test_desc, @all_stats ) )
             {
                 my $val = $test_stats->{$col_name}{'value'};
                 
@@ -1227,10 +1227,10 @@ sub find_outliers($\@)
 
                 my $device_id = $test_stats->{'Unique Device ID'}{'value'};
  
-                $outliers{$device_id}{$test_name}{$col_name} = 'good'
+                $outliers{$device_id}{$test_desc}{$col_name} = 'good'
                     if is_good_outlier( $val, $lower, $upper, $col_sense );
 
-                $outliers{$device_id}{$test_name}{$col_name} = 'bad'
+                $outliers{$device_id}{$test_desc}{$col_name} = 'bad'
                     if is_bad_outlier( $val, $lower, $upper, $col_sense );
             }
         }
@@ -1271,7 +1271,7 @@ sub hilight_outliers($\%\@)
 
     foreach my $test_stats ( @all_stats )
     {
-        my $test_name = $test_stats->{'Test Name'}{'value'};
+        my $test_desc = $test_stats->{'Test Description'}{'value'};
         my $device_id = $test_stats->{'Unique Device ID'}{'value'};
         foreach my $col ( @cols )
         {
@@ -1280,7 +1280,7 @@ sub hilight_outliers($\%\@)
             my $format_obj =
                 get_format_obj( $workbook, $test_stats, $col_name );
 
-            given( $outliers{$device_id}{$test_name}{$col_name} )
+            given( $outliers{$device_id}{$test_desc}{$col_name} )
             {
                 $format_obj->set_format_properties(
                     color    => $good_text_color,
@@ -1381,15 +1381,15 @@ sub scores_hash_is_valid(\%)
     # We should see one value per device
     my $expected_num_values = scalar @unique_device_ids;
 
-    foreach my $test_name ( keys %scores )
+    foreach my $test_desc ( keys %scores )
     {
-        foreach my $metric ( keys $scores{$test_name} )
+        foreach my $metric ( keys $scores{$test_desc} )
         {
-            my $num_values = values $scores{$test_name}{$metric};
+            my $num_values = values $scores{$test_desc}{$metric};
 
             if( $num_values != $expected_num_values )
             {
-                warn "Unexpected number of values: $test_name, $metric\n";
+                warn "Unexpected number of values: $test_desc, $metric\n";
 
                 return 0;
             }
@@ -1409,12 +1409,12 @@ sub extract_raw_scores(\@)
 
     foreach my $test_stats ( @all_stats )
     {
-        my $test_name = $test_stats->{'Test Name'}{'value'};
+        my $test_desc = $test_stats->{'Test Description'}{'value'};
 
-        unless( $test_name ~~ @common_test_names )
+        unless( $test_desc ~~ @common_test_descriptions )
         {
-            push @skipped, $test_name
-                unless $test_name ~~ @skipped;
+            push @skipped, $test_desc
+                unless $test_desc ~~ @skipped;
 
             next;
         }
@@ -1430,13 +1430,13 @@ sub extract_raw_scores(\@)
             my $value = $test_stats->{$metric}{'value'};
 
             # Every metric doesn't make sense for every test
-            $raw_scores{$test_name}{$metric}{$device_id} = $value
+            $raw_scores{$test_desc}{$metric}{$device_id} = $value
                 if defined $value;
         }
     }
 
     my $num_skipped = scalar @skipped;
-    my $num_total = $num_skipped + scalar @common_test_names;
+    my $num_total = $num_skipped + scalar @common_test_descriptions;
 
     unless( $num_skipped == 0 )
     {
@@ -1459,18 +1459,18 @@ sub compute_std_scores(\%)
 
     my %std_scores;
 
-    foreach my $test_name ( keys %raw_scores )
+    foreach my $test_desc ( keys %raw_scores )
     {
-        foreach my $metric ( keys $raw_scores{$test_name} )
+        foreach my $metric ( keys $raw_scores{$test_desc} )
         {
-            my @values = values $raw_scores{$test_name}{$metric};
+            my @values = values $raw_scores{$test_desc}{$metric};
 
             my $mean = mean( @values );
             my $std_dev = stddev( @values );
 
-            foreach my $device_id ( keys $raw_scores{$test_name}{$metric} )
+            foreach my $device_id ( keys $raw_scores{$test_desc}{$metric} )
             {
-                my $value = $raw_scores{$test_name}{$metric}{$device_id}; 
+                my $value = $raw_scores{$test_desc}{$metric}{$device_id}; 
            
                 my $std_score;
 
@@ -1483,7 +1483,7 @@ sub compute_std_scores(\%)
                     $std_score = ( $value - $mean ) / $std_dev;
                 }
 
-                $std_scores{$test_name}{$metric}{$device_id} = $std_score;
+                $std_scores{$test_desc}{$metric}{$device_id} = $std_score;
             }
         }
     }
@@ -1511,17 +1511,17 @@ sub make_bigger_better(\%)
 {
     my $href = shift;
 
-    foreach my $test_name ( keys %$href )
+    foreach my $test_desc ( keys %$href )
     {
-        foreach my $metric ( keys $href->{$test_name} )
+        foreach my $metric ( keys $href->{$test_desc} )
         {
             my $sense = get_column_sense( $metric );
 
             if( $sense =~ /smaller is better/ )
             {
-                foreach my $device_id ( keys $href->{$test_name}{$metric} )
+                foreach my $device_id ( keys $href->{$test_desc}{$metric} )
                 {
-                    negate( $href->{$test_name}{$metric}{$device_id} );
+                    negate( $href->{$test_desc}{$metric}{$device_id} );
                 }
             }
         }
@@ -1557,20 +1557,20 @@ sub normalize_scores(\%)
 
     my %normalized_scores;
 
-    foreach my $test_name ( keys %std_scores )
+    foreach my $test_desc ( keys %std_scores )
     {
-        foreach my $metric ( keys $std_scores{$test_name} )
+        foreach my $metric ( keys $std_scores{$test_desc} )
         {
-            my @values = values $std_scores{$test_name}{$metric};
+            my @values = values $std_scores{$test_desc}{$metric};
      
             my $min = min( @values );
             my $max = max( @values );
             
-            foreach my $device_id ( keys $std_scores{$test_name}{$metric} )
+            foreach my $device_id ( keys $std_scores{$test_desc}{$metric} )
             {
-                my $value = $std_scores{$test_name}{$metric}{$device_id}; 
+                my $value = $std_scores{$test_desc}{$metric}{$device_id}; 
 
-                $normalized_scores{$test_name}{$metric}{$device_id} = 
+                $normalized_scores{$test_desc}{$metric}{$device_id} = 
                     scale( $value, $min, $max, 0, 100 );
             }
         }
@@ -1599,9 +1599,9 @@ sub compute_weights_as_fractions(\%)
         
         my $weight_func = $policies{$policy};
         
-        foreach my $test_name ( @unique_test_names )
+        foreach my $test_desc ( @unique_test_descriptions )
         {
-            my %io_pattern = %{$test_name_to_io_pattern{$test_name}};
+            my %io_pattern = %{$test_description_to_io_pattern{$test_desc}};
 
             foreach my $metric ( @metrics )
             {
@@ -1609,9 +1609,9 @@ sub compute_weights_as_fractions(\%)
             }
         }
        
-        foreach my $test_name ( @unique_test_names )
+        foreach my $test_desc ( @unique_test_descriptions )
         {
-            my %io_pattern = %{$test_name_to_io_pattern{$test_name}};
+            my %io_pattern = %{$test_description_to_io_pattern{$test_desc}};
 
             foreach my $metric ( @metrics )
             {
@@ -1624,7 +1624,7 @@ sub compute_weights_as_fractions(\%)
 
                 $weights_as_fractions
                     {$policy}
-                    {$test_name}
+                    {$test_desc}
                     {$metric} = $fraction;
             }
         }
@@ -1642,22 +1642,22 @@ sub apply_weights_as_fractions(\%\%)
 
     foreach my $policy ( keys %weights_as_fractions )
     {
-        foreach my $test_name ( keys %scores )
+        foreach my $test_desc ( keys %scores )
         {
-            foreach my $metric ( keys $scores{$test_name} )
+            foreach my $metric ( keys $scores{$test_desc} )
             {
                 foreach my $device_id ( 
-                    keys $scores{$test_name}{$metric} )
+                    keys $scores{$test_desc}{$metric} )
                 {
                     my $weight = 
-                        $weights_as_fractions{$policy}{$test_name}{$metric};
+                        $weights_as_fractions{$policy}{$test_desc}{$metric};
 
                     my $nrml_score = 
-                        $scores{$test_name}{$metric}{$device_id}; 
+                        $scores{$test_desc}{$metric}{$device_id}; 
 
                     $weighted_score_components
                         {$policy}
-                        {$test_name}
+                        {$test_desc}
                         {$metric}
                         {$device_id} = $weight * $nrml_score;
                 }
@@ -1676,22 +1676,22 @@ sub combine_scores(\%)
 
     foreach my $policy ( keys %weighted_score_components )
     {
-        foreach my $test_name ( keys $weighted_score_components{$policy} )
+        foreach my $test_desc ( keys $weighted_score_components{$policy} )
         {
             foreach my $metric (
-                keys $weighted_score_components{$policy}{$test_name} )
+                keys $weighted_score_components{$policy}{$test_desc} )
             {
                 foreach my $device_id (
                     keys
                         $weighted_score_components
                         {$policy}
-                        {$test_name}
+                        {$test_desc}
                         {$metric} )
                 {
                     my $weighted_score = 
                         $weighted_score_components
                             {$policy}
-                            {$test_name}
+                            {$test_desc}
                             {$metric}
                             {$device_id}; 
                     
@@ -1763,7 +1763,7 @@ sub generate_scores_sheets($\%\%\%\%\%\%)
 
     @header = (
         'Display Name',
-        'Test Name',
+        'Test Description',
         get_io_pattern_cols(),
         'Metric',
         'Raw',
@@ -1776,37 +1776,39 @@ sub generate_scores_sheets($\%\%\%\%\%\%)
 
     $row = 1; # offset for header
 
-    foreach my $test_name ( keys %normalized_scores )
+    foreach my $test_desc ( keys %normalized_scores )
     {
-        foreach my $metric ( keys $normalized_scores{$test_name} )
+        foreach my $metric ( keys $normalized_scores{$test_desc} )
         {
             foreach my $device_id (
-                keys $normalized_scores{$test_name}{$metric} )
+                keys $normalized_scores{$test_desc}{$metric} )
             {
                 my @row_data = (
                     $device_id_to_display_name{$device_id},
-                    $test_name
+                    $test_desc
                 );
 
-                my %io_pattern = %{$test_name_to_io_pattern{$test_name}};
+                my %io_pattern =
+                    %{$test_description_to_io_pattern{$test_desc}};
+
                 push @row_data, @io_pattern{ get_io_pattern_cols() }; 
 
                 push @row_data, (
                     $metric,
-                    $raw_scores{$test_name}{$metric}{$device_id},
-                    $std_scores{$test_name}{$metric}{$device_id},
-                    $normalized_scores{$test_name}{$metric}{$device_id},
+                    $raw_scores{$test_desc}{$metric}{$device_id},
+                    $std_scores{$test_desc}{$metric}{$device_id},
+                    $normalized_scores{$test_desc}{$metric}{$device_id},
                 );
         
                 foreach my $policy ( reverse sort keys %weights_as_fractions ) 
                 {
                     my $fraction = 
-                        $weights_as_fractions{$policy}{$test_name}{$metric};
+                        $weights_as_fractions{$policy}{$test_desc}{$metric};
                     
                     my $weighted_score_component = 
                         $weighted_score_components
                             {$policy}
-                            {$test_name}
+                            {$test_desc}
                             {$metric}
                             {$device_id};
 
@@ -1855,7 +1857,7 @@ sub get_general_weight
 
     # ISSUE-REVIEW:
     # Should we filter out the smart tests?
-    # return 0 if $test_name =~ /Background/;
+    # return 0 if $test_desc =~ /Background/;
 
     # We extract 23 raw metrics, but only 3 of them measure throughput.
     # Ignore most of them to undo this latency bias.
@@ -1912,7 +1914,7 @@ sub get_bing_weight
     
     # ISSUE-REVIEW:
     # Should we filter out the smart tests?
-    # $test_weight = 0 if $test_name =~ /Background/;
+    # $test_weight = 0 if $test_desc =~ /Background/;
 
     # Index serving is mostly reads
     if( $io_pattern{'R Mix'} > 0 )

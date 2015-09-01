@@ -29,7 +29,7 @@
 # ISSUE-REVIEW: This could be made to work w/raw_disk if its ever important
 unless( $cmd_line->raw_disk )
 {
-    my $ns_prefix = "Targeted Test Write Impact";
+    my $desc_prefix = "Targeted Test Write Impact";
 
     foreach my $block_size ( qw( 4K 8K 64K ) )
     {
@@ -44,11 +44,11 @@ unless( $cmd_line->raw_disk )
                 run_time            => 3600
             ); 
            
-            my $ns = "$ns_prefix $block_size $access_pattern";
+            my $desc = "$desc_prefix $block_size $access_pattern";
 
             # Run the workload once unmolested as a baseline.
             my %baseline =
-                test( %workload, name_string => "$ns Baseline" );
+                test( %workload, description => "$desc Baseline" );
             
             my $read_tput_KBps = $baseline{'MB/sec Total'} * 1000;
 
@@ -60,7 +60,7 @@ unless( $cmd_line->raw_disk )
                 my $write_tput_KBps =
                     int ( ( $write_pct / 100 ) * $read_tput_KBps );
 
-                my $bg_ns = "$write_pct% Injected Writes";
+                my $bg_desc = "$write_pct% Injected Writes";
 
                 my $cmd = "write_forever.cmd ";
 
@@ -78,12 +78,12 @@ unless( $cmd_line->raw_disk )
                 purge();
                 initialize();
                 bg_exec(
-                    description => $bg_ns,
+                    description => $bg_desc,
                     command => $cmd,
                 );
                 test( 
                     %workload,
-                    name_string => "$ns $bg_ns",
+                    description => "$desc $bg_desc",
                     purge => 0,
                     initialize => 0,
                 );

@@ -27,7 +27,7 @@
 # DEALINGS IN THE SOFTWARE.
 
 test(
-    name_string         => 'Initialize to large block sequential', 
+    description         => 'Initialize to large block sequential', 
     write_percentage    => 100, 
     access_pattern      => 'sequential',
     block_size          => '1M',
@@ -37,7 +37,7 @@ test(
 ); 
 
 test(
-    name_string         => 'Transition to small block random', 
+    description         => 'Transition to small block random', 
     write_percentage    => 100, 
     access_pattern      => 'random',
     block_size          => '4K',
@@ -47,7 +47,7 @@ test(
 ); 
 
 test(
-    name_string         => 'Transition to large block sequential', 
+    description         => 'Transition to large block sequential', 
     write_percentage    => 100, 
     access_pattern      => 'sequential',
     block_size          => '1M',

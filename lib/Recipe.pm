@@ -198,9 +198,9 @@ sub canonicalize_step
     $step_ref->{'read_percentage'} =
         100 - $step_ref->{'write_percentage'};
 
-    # ensure name_string can be used as a unique filename
-    $step_ref->{'name_string'} =
-        make_legal_filename( $step_ref->{'name_string'} . "-step-$number" );
+    # ensure description can be used as a unique filename
+    $step_ref->{'description'} =
+        make_legal_filename( $step_ref->{'description'} . "-step-$number" );
 }
 
 sub apply_overrides
@@ -786,12 +786,12 @@ sub run_step
                 unless -e $self->target->file_name;
         }
 
-        my $ns = $step_ref->{'name_string'};
+        my $desc = $step_ref->{'description'};
   
         # Record background activity, if any, during this test
         if( scalar @{$self->bg_processes} > 0 )
         {
-            open my $FH, '>', $self->output_dir . "\\background-$ns.txt";
+            open my $FH, '>', $self->output_dir . "\\background-$desc.txt";
 
             foreach my $proc ( @{$self->bg_processes} )
             {
@@ -809,27 +809,27 @@ sub run_step
         }
 
         $self->smartctl_runner->collect(
-            file_name => "smart-before-$ns.txt",
+            file_name => "smart-before-$desc.txt",
             output_dir => $self->output_dir,
         )
         if defined $self->smartctl_runner;
 
         if( defined $self->logman_runner )
         {
-            $self->logman_runner->name_string( $ns );
+            $self->logman_runner->description( $desc );
             $self->logman_runner->start();
         }
 
         if( defined $self->power )
         {
-            $self->power->name_string( $ns );
+            $self->power->description( $desc );
             $self->power->start();
         }
 
         $self->io_generator->run( $step_ref, 'test' );
 
         $self->smartctl_runner->collect(
-            file_name => "smart-after-$ns.txt",
+            file_name => "smart-after-$desc.txt",
             output_dir => $self->output_dir,
         )
         if defined $self->smartctl_runner;
@@ -849,7 +849,7 @@ sub run_step
                 if $self->cmd_line->io_generator eq 'sqlio';
   
             # ISSUE-REVIEW: is this guaranteed to be correct?
-            my $iogen_outfile = $self->output_dir . "\\test-$ns.txt";
+            my $iogen_outfile = $self->output_dir . "\\test-$desc.txt";
 
             open my $IOGEN_OUT, "<$iogen_outfile" 
                 or die "Error opening $iogen_outfile";
@@ -866,7 +866,7 @@ sub run_step
         # Allow test to specify that output files be discarded
         my $discard_results = $step_ref->{'discard_results'} // 0;
 
-        unlink( glob( $self->output_dir . "\\*$ns*" ) )
+        unlink( glob( $self->output_dir . "\\*$desc*" ) )
             if $discard_results;
     }
     elsif( $kind eq 'idle' )

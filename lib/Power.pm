@@ -37,7 +37,7 @@ has 'output_dir' => (
     default => undef
 );
 
-has 'name_string' => (
+has 'description' => (
     is      => 'rw',
     isa     => 'Maybe[Str]',
     default => undef
@@ -74,9 +74,9 @@ sub start()
     my $self = shift;
   
     my $dir = $self->output_dir;
-    my $name_string = $self->name_string;
+    my $description = $self->description;
 
-    $power_csv = "$dir\\power-$name_string.csv";
+    $power_csv = "$dir\\power-$description.csv";
 
     $power_pid = 
         execute_task( "get-power.cmd > $power_csv", background => 1 );
@@ -87,9 +87,9 @@ sub parse()
     my $self = shift;
     my $stats_ref = shift;
     my $dir = $self->output_dir;
-    my $name_string = $self->name_string;
+    my $description = $self->description;
 
-    $power_csv = "$dir\\power-$name_string.csv";
+    $power_csv = "$dir\\power-$description.csv";
    
     unless( -e $power_csv )
     {

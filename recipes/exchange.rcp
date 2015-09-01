@@ -27,7 +27,7 @@
 # DEALINGS IN THE SOFTWARE.
 
 test(
-    name_string         => '4K Random 50/50', 
+    description         => '4K Random 50/50', 
     write_percentage    => 50, 
     access_pattern      => 'random',
     block_size          => '4K',
@@ -37,7 +37,7 @@ test(
 ); 
 
 test(
-    name_string         => '1M Sequential Reads', 
+    description         => '1M Sequential Reads', 
     write_percentage    => 0, 
     access_pattern      => 'sequential',
     block_size          => '1M',
@@ -47,7 +47,7 @@ test(
 ); 
 
 test(
-    name_string         => '1M Sequential Writes', 
+    description         => '1M Sequential Writes', 
     write_percentage    => 100, 
     access_pattern      => 'sequential',
     block_size          => '1M',

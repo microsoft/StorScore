@@ -52,14 +52,14 @@ sub do_matrix
 
                 foreach my $queue_depth ( @queue_depths )
                 {
-                    my $name_string =  
+                    my $description =  
                         "$read_percentage-reads-" . 
                         "$write_percentage-writes-" .
                         "$block_size-$access_pattern-" .
                         "QD$queue_depth";
 
                     test( 
-                        name_string         => $name_string, 
+                        description         => $description, 
                         write_percentage    => $write_percentage,
                         access_pattern      => $access_pattern,
                         block_size          => $block_size,

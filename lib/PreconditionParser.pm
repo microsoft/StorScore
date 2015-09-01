@@ -83,9 +83,9 @@ sub parse($$)
             $msg .= "$1 IOs";
         }
         
-        my $test_name = $stats_ref->{'Test Name'};
+        my $test_desc = $stats_ref->{'Test Description'};
 
-        warn "\t$msg: $test_name\n";
+        warn "\t$msg: $test_desc\n";
     }
 }
 

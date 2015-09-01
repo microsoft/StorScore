@@ -36,11 +36,11 @@ foreach my $access_pattern ( qw(random sequential) )
 
     while( $total_sec < $target_sec )
     {
-        my $name_string =  
+        my $description =  
             "0-reads-100-writes-1M-$access_pattern-QD32-$test_num";
 
         test( 
-            name_string         => $name_string, 
+            description         => $description, 
             write_percentage    => 100,
             access_pattern      => $access_pattern,
             block_size          => '1M', 

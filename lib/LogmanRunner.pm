@@ -51,7 +51,7 @@ has 'output_dir' => (
     required => 1
 );
 
-has 'name_string' => (
+has 'description' => (
     is      => 'rw',
     isa     => 'Maybe[Str]',
     default => undef
@@ -66,10 +66,10 @@ sub build_csv_filename
     my $self = shift;
     my $prefix = shift;
 
-    my $name_string = $self->name_string;
+    my $description = $self->description;
     my $dir = $self->output_dir;
 
-    return "$dir\\logman-$prefix-$name_string.csv";
+    return "$dir\\logman-$prefix-$description.csv";
 }
 
 sub raw_filename

@@ -52,7 +52,7 @@ sub do_stress_tests($)
                 {
                     my $read_percentage = 100 - $write_percentage;
 
-                    my $name_string =  
+                    my $description =  
                         "$read_percentage-reads-" . 
                         "$write_percentage-writes-" .
                         "$block_size-" .
@@ -60,7 +60,7 @@ sub do_stress_tests($)
                         "QD32";
 
                     test( 
-                        name_string         => $name_string, 
+                        description         => $description, 
                         write_percentage    => $write_percentage,
                         access_pattern      => $access_pattern,
                         block_size          => $block_size,

@@ -152,7 +152,7 @@ sub run($$)
     }
     
     my $out_file = $self->output_dir .
-        "\\$run_type-$test_ref->{'name_string'}.txt";
+        "\\$run_type-$test_ref->{'description'}.txt";
     
     open( my $OUT, ">$out_file" )
         or die "could not open $out_file: $!";

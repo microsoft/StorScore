@@ -28,10 +28,10 @@
 
 sub do_workload($)
 {
-    my $name_string = shift;
+    my $description = shift;
 
     test(
-        name_string         => $name_string, 
+        description         => $description, 
         write_percentage    => 100, 
         access_pattern      => 'random',
         block_size          => '8K',

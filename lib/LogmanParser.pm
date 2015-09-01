@@ -98,9 +98,9 @@ sub parse($$)
 
             if( $qd_diff > $qd_threshold )
             {
-                my $test_name = $stats_ref->{'Test Name'};
+                my $test_desc = $stats_ref->{'Test Description'};
 
-                warn "\tFailed to achieve target QD: $test_name\n";
+                warn "\tFailed to achieve target QD: $test_desc\n";
             }
         }
     }
