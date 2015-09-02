@@ -153,6 +153,7 @@ $device_db{'C400-MTFDDAK512MAM'} =
 $device_db{'MICRON_M510DC_MTFDDAK480MBP'} =
 {
     'Friendly Name' => 'Micron M510 DC 480GB',
+    'Internal Capacity' => '624 GB',
     'Host Writes' =>
     {
         'Attribute' => 247,
