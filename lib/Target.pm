@@ -345,7 +345,7 @@ sub purge
     # TODO: SECURE ERASE 
     #
     # When the target is an SSD, we should SECURE ERASE here instead of
-    # the "diskpart clean":
+    # or in addition to the "diskpart clean":
 
     clean_disk( $self->physical_drive );
 
