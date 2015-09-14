@@ -36,5 +36,3 @@ do_matrix(
     warmup_time         => 300,
     run_time            => 3600
 );
-
-include 'targeted_tests.rcp';
