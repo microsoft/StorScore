@@ -29,63 +29,63 @@
 # ISSUE-REVIEW: This could be made to work w/raw_disk if its ever important
 unless( $cmd_line->raw_disk )
 {
-  my $desc_prefix = "Targeted Test Write Impact";
+    my $desc_prefix = "Targeted Test Write Impact";
 
-  foreach my $block_size ( qw( 4K 8K 64K ) )
-  {
-    my %workload = (
-      write_percentage    => 0,
-      access_pattern      => "random",
-      block_size          => $block_size,
-      queue_depth         => 1,
-      warmup_time         => 60,
-      run_time            => 3600
-    );
-
-    my $desc = "$desc_prefix $block_size Random";
-
-    # Run the workload once unmolested as a baseline.
-    my %baseline =
-        test( %workload, description => "$desc Baseline" );
-
-    my $read_tput_KBps = $baseline{'MB/sec Total'} * 1000;
-
-    # Run again, this time with an aggressor process injecting
-    # writes in the background.  The aggressor is rate-limited
-    # to a fraction of the baseline read throughput.
-    foreach my $write_pct ( qw( 5 10 ) )
+    foreach my $block_size ( qw( 4K 8K 64K ) )
     {
-      my $write_tput_KBps =
-          int ( ( $write_pct / 100 ) * $read_tput_KBps );
+        my %workload = (
+            write_percentage    => 0,
+            access_pattern      => "random",
+            block_size          => $block_size,
+            queue_depth         => 1,
+            warmup_time         => 60,
+            run_time            => 3600
+        );
 
-      my $bg_desc = "$write_pct% Injected Writes";
+        my $desc = "$desc_prefix $block_size Random";
 
-      my $cmd = "write_forever.cmd ";
+        # Run the workload once unmolested as a baseline.
+        my %baseline =
+            test( %workload, description => "$desc Baseline" );
 
-      $cmd .= "-b256K ";
-      $cmd .= "-r " if $write_pct == 5;
-      $cmd .= "-g$write_tput_KBps "; # Rate limit
-      $cmd .= $target->file_name;
+        my $read_tput_KBps = $baseline{'MB/sec Total'} * 1000;
 
-      # We must do our own purge/initialize, so we can "sneak"
-      # the bg_exec in between these steps and the actual test.
-      # If we didn't do this, the purge would occur after the
-      # bg_exec, effectively destroying the target volume and
-      # causing the backgrounded process to die with an error.
+        # Run again, this time with an aggressor process injecting
+        # writes in the background.  The aggressor is rate-limited
+        # to a fraction of the baseline read throughput.
+        foreach my $write_pct ( qw( 5 10 ) )
+        {
+            my $write_tput_KBps =
+                int ( ( $write_pct / 100 ) * $read_tput_KBps );
 
-      purge();
-      initialize();
-      bg_exec(
-        description => $bg_desc,
-        command => $cmd,
-      );
-      test(
-        %workload,
-        description => "$desc $bg_desc",
-        purge => 0,
-        initialize => 0,
-      );
-      bg_killall();
+            my $bg_desc = "$write_pct% Injected Writes";
+
+            my $cmd = "write_forever.cmd ";
+
+            $cmd .= "-b256K ";
+            $cmd .= "-r " if $write_pct == 5;
+            $cmd .= "-g$write_tput_KBps "; # Rate limit
+            $cmd .= $target->file_name;
+
+            # We must do our own purge/initialize, so we can "sneak"
+            # the bg_exec in between these steps and the actual test.
+            # If we didn't do this, the purge would occur after the
+            # bg_exec, effectively destroying the target volume and
+            # causing the backgrounded process to die with an error.
+
+            purge();
+                initialize();
+                bg_exec(
+                description => $bg_desc,
+                command => $cmd,
+            );
+            test(
+                %workload,
+                description => "$desc $bg_desc",
+                purge => 0,
+                initialize => 0,
+            );
+            bg_killall();
+        }
     }
-  }
 }
