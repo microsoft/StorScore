@@ -50,11 +50,19 @@ unless( $cmd_line->raw_disk )
 
         my $read_tput_KBps = $baseline{'MB/sec Total'} * 1000;
 
+        my $write_workloads = {
+            ["Random", 5],
+            ["Sequential", 10]
+        };
+
         # Run again, this time with an aggressor process injecting
         # writes in the background.  The aggressor is rate-limited
         # to a fraction of the baseline read throughput.
-        foreach my $write_pct ( qw( 5 10 ) )
+        foreach my $write_workload ( @write_workloads )
         {
+
+            my $($write_pattern, $write_pct) = @$write_workload;
+
             my $write_tput_KBps =
                 int ( ( $write_pct / 100 ) * $read_tput_KBps );
 
@@ -63,7 +71,7 @@ unless( $cmd_line->raw_disk )
             my $cmd = "write_forever.cmd ";
 
             $cmd .= "-b256K ";
-            $cmd .= "-r " if $write_pct == 5;
+            $cmd .= "-r " if $write_pattern == "Random";
             $cmd .= "-g$write_tput_KBps "; # Rate limit
             $cmd .= $target->file_name;
 
