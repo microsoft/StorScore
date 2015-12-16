@@ -58,10 +58,10 @@ unless( $cmd_line->raw_disk )
         # Run again, this time with an aggressor process injecting
         # writes in the background.  The aggressor is rate-limited
         # to a fraction of the baseline read throughput.
-        foreach my $write_workload ( @write_workloads )
+        foreach my $write_workload ( $write_workloads )
         {
 
-            my $($write_pattern, $write_pct) = @$write_workload;
+            my ($write_pattern, $write_pct) = $write_workload;
 
             my $write_tput_KBps =
                 int ( ( $write_pct / 100 ) * $read_tput_KBps );
