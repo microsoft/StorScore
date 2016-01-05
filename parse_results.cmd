@@ -157,8 +157,6 @@ sub parse_background_file($$)
         return;
     }
 
-    return 0 unless -e $file_name;
-
     open my $LOG, "<$file_name" 
         or die "Error opening $file_name";
 
