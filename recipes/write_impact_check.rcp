@@ -26,7 +26,7 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-# ISSUE-REVIEW: This could be made to work w/raw_disk if its ever important
+# ISSUE-REVIEW: This could be made to work w/raw_disk if it's ever important
 unless( $cmd_line->raw_disk )
 {
     my $desc_prefix = "Targeted Test Write Impact";
@@ -44,24 +44,23 @@ unless( $cmd_line->raw_disk )
 
         my $desc = "$desc_prefix $block_size Random";
 
-        # Run the workload once unmolested as a baseline.
+        # Run the workload once undisturbed as a baseline.
         my %baseline =
             test( %workload, description => "$desc Baseline" );
 
         my $read_tput_KBps = $baseline{'MB/sec Total'} * 1000;
 
-        my $write_workloads = {
+        my @write_workloads = (
             ["Random", 5],
             ["Sequential", 10]
-        };
+        );
 
         # Run again, this time with an aggressor process injecting
         # writes in the background.  The aggressor is rate-limited
         # to a fraction of the baseline read throughput.
-        foreach my $write_workload ( $write_workloads )
+        foreach my $write_workload ( @write_workloads )
         {
-
-            my ($write_pattern, $write_pct) = $write_workload;
+            my ($write_pattern, $write_pct) = @$write_workload;
 
             my $write_tput_KBps =
                 int ( ( $write_pct / 100 ) * $read_tput_KBps );
@@ -71,7 +70,7 @@ unless( $cmd_line->raw_disk )
             my $cmd = "write_forever.cmd ";
 
             $cmd .= "-b256K ";
-            $cmd .= "-r " if $write_pattern == "Random";
+            $cmd .= "-r " if $write_pattern =~ /random/i;
             $cmd .= "-g$write_tput_KBps "; # Rate limit
             $cmd .= $target->file_name;
 
@@ -82,8 +81,8 @@ unless( $cmd_line->raw_disk )
             # causing the backgrounded process to die with an error.
 
             purge();
-                initialize();
-                bg_exec(
+			initialize();
+			bg_exec(
                 description => $bg_desc,
                 command => $cmd,
             );
