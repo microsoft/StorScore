@@ -78,9 +78,43 @@ $device_db{'LITEON IT EKT-960P1P'} =
     }
 };
 
+$device_db{'NVMe LITEON EP2-KB960'} =
+{
+    'Friendly Name'         => 'LiteOn EP2-KB 960GB',
+    'Wear Range Attribute'  => 177,
+    'Rated PE Cycles'       => 6000,
+    'Host Writes'   =>
+    { 
+        'Attribute' => 241,
+        'Unit'      => 32 * BYTES_PER_MB_BASE2,
+    },
+    'Controller Writes' =>
+    {
+       'Attribute'  => 233,
+       'Unit'       => BYTES_PER_GB_BASE2,
+    }
+};
+
+$device_db{'EP1-KB960'} =
+{
+    'Friendly Name'         => 'LiteOn EP1-KB 960GB',
+    'Wear Range Attribute'  => 177,
+    'Rated PE Cycles'       => 6000,
+    'Host Writes'   =>
+    {
+        'Attribute' => 241,
+        'Unit'      => 32 * BYTES_PER_MB_BASE2,
+    },
+    'Controller Writes' =>
+    {
+       'Attribute'  => 233,
+       'Unit'       => BYTES_PER_GB_BASE2,
+    }
+};
+
 $device_db{'EP1-KF960'} =
 {
-    'Friendly Name'         => 'LiteOn EP1 960GB',
+    'Friendly Name'         => 'LiteOn EP1-KF 960GB',
     'Wear Range Attribute'  => 177,
     'Rated PE Cycles'       => 6000,
     'Host Writes'   =>

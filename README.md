@@ -88,5 +88,5 @@ Feedback?
 Questions, comments, bug reports, and especially accolades may be directed
 to the developers:
 -       Laura Caulfield <lauraca@microsoft.com>
--       Mark Santaniello <marksan@microsoft.com>
+-       Mark Santaniello <marksan@fb.com>
 -       Bikash Sharma <bsharma@microsoft.com>

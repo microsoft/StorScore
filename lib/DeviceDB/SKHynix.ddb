@@ -45,6 +45,38 @@ $device_db{'NVMe HFS960GD0EED-541'} =
     'Rated PE Cycles'   => 15000,
 };
 
+$device_db{'HFS480G32MED-3410A'} =
+{
+    'Friendly Name'     => 'SK Hynix SE3010 480GB',
+    'Rated PE Cycles'   => 3000,  
+    'Host Writes'   =>
+    {
+        'Attribute' => 241,
+        'Unit'      => BYTES_PER_GB_BASE2,
+    },
+    'Controller Writes' =>
+    {
+        'Attribute' => 234,
+        'Unit'      => BYTES_PER_GB_BASE2,
+    }
+};
+
+$device_db{'NVMe SKhynix PE3110 9'} =
+{
+    'Friendly Name'     => 'SK Hynix PE3110 960GB',
+    'Rated PE Cycles'   => 15000,  
+    'Host Writes'   =>
+    {
+        'Attribute' => 241,
+        'Unit'      => BYTES_PER_GB_BASE2,
+    },
+    'Controller Writes' =>
+    {
+        'Attribute' => 234,
+        'Unit'      => BYTES_PER_GB_BASE2,
+    }
+};
+
 $device_db{'HFS480G32MNB-2000A'} =
 {
     'Friendly Name'     => 'SK Hynix SH921 480GB',
@@ -79,7 +111,7 @@ $device_db{'HFS480G32EEB-2400A'} =
 
 $device_db{'Marvell AltaPlus R2.2'} =
 {
-    'Friendly Name'     => 'SK Hynix PC200',
+    'Friendly Name'     => 'SK Hynix PC200 480GB',
     'Rated PE Cycles'   => 3000,
     'Host Writes'   =>
     {

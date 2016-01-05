@@ -71,6 +71,7 @@ use LogmanRunner;
 use Power;
 use WmicRunner;
 use SharedVariables;
+use File::Copy;
 
 check_system_compatibility();
 
@@ -212,6 +213,8 @@ die "Results subdirectory $output_dir already exists!\n"
 my $overall_start = time();
 
 mkdir( $output_dir );
+die "Version file for StorScore doesn't exist!\n"
+	unless copy( "StorScore.ver", $output_dir );
 
 if( $cmd_line->collect_smart )
 {
