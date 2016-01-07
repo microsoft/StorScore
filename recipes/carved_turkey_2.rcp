@@ -26,15 +26,4 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-include 'matrix.rpm';
-
-do_matrix(
-    access_patterns     => [qw( sequential )],
-    write_percentages   => [qw( 100 30 0 )],
-    block_sizes         => [qw( 2M 1M 512K 64K )],
-    queue_depths        => [qw( 256 64 16 4 1 )],
-    warmup_time         => 300,
-    run_time            => 3600
-);
-
 include 'targeted_tests.rcp';

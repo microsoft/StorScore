@@ -26,5 +26,14 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-include 'turkey_test_part1.rcp';
-include 'turkey_test_part2.rcp';
+# Each of the following recipes include steps for one portion of the "carved"
+# turkey test.  When run serially, this partitioning and order build the results
+# in an intentional order -- the first results provide a high-level
+# understanding of performance (corners) and the later tests fill in the
+# remaining tests.
+
+include 'carved_turkey_1.rcp';
+include 'carved_turkey_2.rcp';
+include 'carved_turkey_3.rcp';
+include 'carved_turkey_4.rcp';
+include 'carved_turkey_5.rcp';
