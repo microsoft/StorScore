@@ -780,7 +780,7 @@ sub run_step
         $self->target->prepare()
             unless $self->target->is_prepared();
         
-        unless( $pretend )
+        unless( $pretend or $self->cmd_line->raw_disk )
         {
             die "Attempt to test non-existent target file?\n"
                 unless -e $self->target->file_name;
