@@ -1,0 +1,69 @@
+# vim: set filetype=perl:
+
+# StorScore
+#
+# Copyright (c) Microsoft Corporation
+#
+# All rights reserved. 
+#
+# MIT License
+#
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the "Software"),
+# to deal in the Software without restriction, including without limitation
+# the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED *AS IS*, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+# DEALINGS IN THE SOFTWARE.
+#
+# The worklaod below is designed to test the drive's ability 
+# to recover from workload transitions.
+
+sub do_workload($$$$$)
+{
+    my $IO_size = shift;
+    my $QD = shift;
+    my $write_perc = shift;
+    my $pattern = shift;
+    my $test_time = shift;
+
+    my $description = "Targeted Transition To $IO_size $pattern $write_perc $QD";
+    test(
+        description         => $description, 
+        write_percentage    => $write_perc,
+        access_pattern      => $pattern,
+        block_size          => $IO_size,
+        queue_depth         => $QD,
+        warmup_time         => 0, #this may be too short
+        run_time            => $test_time,
+        purge               => 0,
+        initialize          => 0,
+        precondition        => 0
+    ); 
+}
+    
+do_workload( "2M", 128, 100, "sequential", 7200);
+
+foreach my $block_size ( qw( 1K 2K 4K 8K 16K 32K 64K 128K 256K 512K 1M 2M ) )
+{
+    foreach my $QD ( qw( 1 2 4 8 16 32 64 128 256 512 1024 2048 ) )
+    {
+        foreach my $write_perc( qw( 0 100 ) )
+        {
+            foreach my $pattern ( qw( random sequential ) )
+            {
+                do_workload( $block_size, $QD, $write_perc, $pattern, 600);
+            }
+        }
+    }
+}
