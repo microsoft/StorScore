@@ -104,6 +104,20 @@ my $pct_table_pat = qr/\|\s+(.+)\s+\|\s+(.+)\s+\|\s+(.+)\s+/;
 my @extract_rules =
 (
     {
+        match => qr/.+alignment:\s+(\d+).+/,
+        store =>
+        [
+            'Alignment'
+        ]
+    },
+    {
+        match => qr/.+stride:\s+(\d+).+/,
+        store =>
+        [
+            'Alignment'
+        ]
+    },
+    {
         match => qr/min $pct_table_pat/,
         store =>
         [ 

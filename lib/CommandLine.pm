@@ -152,6 +152,13 @@ has 'demo_mode' => (
     writer  => '_demo_mode'
 );
 
+has 'interactive' => (
+    is  => 'ro',
+    isa => 'Bool',
+    default => 1,
+    writer  => '_interactive'
+);
+
 has 'auto_upload' => (
     is  => 'ro',
     isa => 'Bool',
@@ -281,6 +288,7 @@ sub BUILD
         "active_range=i"         => sub { $self->attr(@_) },
         "partition_bytes=i"      => sub { $self->attr(@_) },
         "demo_mode!"             => sub { $self->attr(@_) },
+        "interactive!"           => sub { $self->attr(@_) },
         "auto_upload!"           => sub { $self->attr(@_) },
         "results_share=s"        => sub { $self->attr(@_) },
         "results_share_user=s"   => sub { $self->attr(@_) },

@@ -363,6 +363,9 @@ my @cols =
         type   => 'io_pattern'
     },
     {
+        name   => 'Alignment',
+    },
+    {
         name   => 'Access Type',
         type   => 'io_pattern'
     },
