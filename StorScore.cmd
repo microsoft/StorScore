@@ -205,10 +205,7 @@ else
     }
 }
 
-if( $cmd_line->interactive )
-{
-    exit 0 unless should_proceed();
-}
+exit 0 unless should_proceed();
 
 die "Results subdirectory $output_dir already exists!\n"
     if -e $output_dir;
