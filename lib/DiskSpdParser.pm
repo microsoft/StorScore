@@ -217,6 +217,15 @@ my @extract_rules =
         ]
     },
     {
+        match => qr/9-nines $pct_table_pat/,
+        store => 
+        [
+            '9-nines Percentile Read',
+            '9-nines Percentile Write',
+            '9-nines Percentile Total'
+        ]
+    },
+    {
         match => qr/max $pct_table_pat/,
         store =>
         [ 
