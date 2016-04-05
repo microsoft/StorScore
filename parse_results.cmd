@@ -472,6 +472,11 @@ sub generate_cols_section($)
             sense  => 'smaller is better',
         },
         {
+            name   => "9-nines Percentile $suffix",
+            format => '#,##0.00',
+            sense  => 'smaller is better',
+        },
+        {
             name   => "Max Latency $suffix",
             format => '#,##0.00',
             sense  => 'smaller is better',
