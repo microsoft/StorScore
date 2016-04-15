@@ -36,7 +36,7 @@ struct Parameters
     string testFileName;
     int blockSize;
     AccessPattern accessPattern;
-    int outstandingIOs;
+    int64_t outstandingIOs;
     int writePercentage;
     int numPasses;
     bool runUntilSteadyState;
@@ -416,8 +416,8 @@ class IOGenerator
     int numPasses_;
 
     int64_t completedBytes_;
-    int postedIOs_;
-    int completedIOs_;
+    int64_t postedIOs_;
+    int64_t completedIOs_;
     int inFlight_;
     
     bool steadyStateAchieved_;
@@ -425,9 +425,9 @@ class IOGenerator
     
     array< OVERLAPPED, MAX_OUTSTANDING_IOS > overlapped_;
 
-    const int TOTAL_BLOCKS;
+    const int64_t TOTAL_BLOCKS;
     
-    const int MAX_STEADY_STATE_IOS;
+    const int64_t MAX_STEADY_STATE_IOS;
    
     int64_t qpcStart_;
     
