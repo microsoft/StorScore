@@ -230,7 +230,7 @@ class SteadyStateDetector
     // thus the CPU overhead, of the linear-regression.
     static const int BINS_PER_SECOND = 10;  // Each bin = 1/10th second
 
-    circular_buffer<int> data_;
+    circular_buffer<int64_t> data_;
 
     // Constants for linear regression
     const double SUM_X;
@@ -255,14 +255,14 @@ class SteadyStateDetector
         , data_( NUM_BINS, 0 )
         , SUM_X(
                 std::accumulate(
-                    boost::counting_iterator<int>( 1 ),
-                    boost::counting_iterator<int>( NUM_BINS ),
+                    boost::counting_iterator<int64_t>( 1 ),
+                    boost::counting_iterator<int64_t>( NUM_BINS ),
                     0.0 ) )
         , SUM_SQ_X(
                 std::inner_product(
-                    boost::counting_iterator<int>( 1 ),
-                    boost::counting_iterator<int>( NUM_BINS ),
-                    boost::counting_iterator<int>( 1 ),
+                    boost::counting_iterator<int64_t>( 1 ),
+                    boost::counting_iterator<int64_t>( NUM_BINS ),
+                    boost::counting_iterator<int64_t>( 1 ),
                     0.0 ) )
         , VAR_X( SUM_SQ_X - ( ( SUM_X * SUM_X ) / ( NUM_BINS - 1 ) ) )
         , STD_DEV_X( std::sqrt( VAR_X ) )
@@ -292,7 +292,7 @@ class SteadyStateDetector
             data_.current() = 0;
        
             numValidBins_ = 
-                std::min<int>( numValidBins_ + 1, NUM_BINS );
+                std::min<int64_t>( numValidBins_ + 1, NUM_BINS );
 
             nextBinStartTime_ += QPC_TICKS_PER_BIN;
         }
@@ -444,8 +444,8 @@ class SteadyStateDetector
         
         const double sum_xy =
             std::inner_product(
-                boost::counting_iterator<int>( 1 ),
-                boost::counting_iterator<int>( NUM_BINS ),
+                boost::counting_iterator<int64_t>( 1 ),
+                boost::counting_iterator<int64_t>( NUM_BINS ),
                 data_.begin(),
                 0.0
             );

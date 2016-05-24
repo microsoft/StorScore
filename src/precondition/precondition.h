@@ -105,7 +105,7 @@ void randomFillBuffer( T& buffer )
 {
     using namespace std;
 
-    uniform_int_distribution<int> uniformByteDistribution( 0, 0xFF );
+    uniform_int_distribution<int64_t> uniformByteDistribution( 0, 0xFF );
 
     auto rng = bind( uniformByteDistribution, rngEngine );
 

@@ -34,7 +34,7 @@ using namespace std;
 struct Parameters
 {
     string testFileName;
-    int blockSize;
+    int64_t blockSize;
     AccessPattern accessPattern;
     int64_t outstandingIOs;
     int writePercentage;
@@ -131,7 +131,7 @@ void parseCmdline( int argc, char *argv[] )
 
                     case 'b':
                         // Block size in KB.  Convert to bytes.
-                        params.blockSize = stoi( arg.substr( 2 ) ) * 1024;
+                        params.blockSize = _atoi64( arg.substr( 2 ).c_str() ) * 1024;
                         break;
 
                     case 'r':
@@ -139,7 +139,7 @@ void parseCmdline( int argc, char *argv[] )
                         break;
 
                     case 'o':
-                        params.outstandingIOs = stoi( arg.substr( 2 ) );
+                        params.outstandingIOs = stoi( arg.substr( 2 ).c_str() );
                         break;
                     
                     case 'w':
@@ -371,7 +371,7 @@ class ThroughputMeter
 
     public:
 
-    void trackCompletion( int bytes )
+    void trackCompletion( int64_t bytes )
     {
         int64_t now = qpc();
 
@@ -418,7 +418,7 @@ class IOGenerator
     int64_t completedBytes_;
     int64_t postedIOs_;
     int64_t completedIOs_;
-    int inFlight_;
+    int64_t inFlight_;
     
     bool steadyStateAchieved_;
     bool steadyStateAssumedIOs_;
@@ -482,9 +482,9 @@ class IOGenerator
     void run()
     {
         // Kick off initial IOs
-        const int initialIOs = min( TOTAL_BLOCKS, params.outstandingIOs ); 
+        const int64_t initialIOs = min( TOTAL_BLOCKS, params.outstandingIOs ); 
 
-        for( int i = 0; i < initialIOs; ++i )
+        for( int64_t i = 0; i < initialIOs; ++i )
         {
             postNextIO( i );
         }
@@ -555,13 +555,13 @@ class IOGenerator
     friend 
         void CALLBACK ioCompletionRoutine( DWORD, DWORD, LPOVERLAPPED );
 
-    int getRandomLegalDataBufferOffset() const
+    int64_t getRandomLegalDataBufferOffset() const
     {
-        const int MAX_LEGAL_SECTOR_OFFSET = MAX_IO_SIZE / SECTOR_SIZE;
+        const int64_t MAX_LEGAL_SECTOR_OFFSET = MAX_IO_SIZE / SECTOR_SIZE;
 
-        uniform_int_distribution<int> dist( 0, MAX_LEGAL_SECTOR_OFFSET );
+        uniform_int_distribution<int64_t> dist( 0, MAX_LEGAL_SECTOR_OFFSET );
 
-        int randomSectorOffset = dist( rngEngine );
+        int64_t randomSectorOffset = dist( rngEngine );
 
         // Convert sector offset to byte offset
         return randomSectorOffset * SECTOR_SIZE;
@@ -579,9 +579,9 @@ class IOGenerator
         {
             assert( params.accessPattern == RANDOM );
         
-            const int MAX_LEGAL_BLOCK = TOTAL_BLOCKS - 1;
+            const int64_t MAX_LEGAL_BLOCK = TOTAL_BLOCKS - 1;
 
-            uniform_int_distribution<int> dist( 0, MAX_LEGAL_BLOCK );
+            uniform_int_distribution<int64_t> dist( 0, MAX_LEGAL_BLOCK );
 
             nextBlockNum = dist( rngEngine );
         }
@@ -589,7 +589,7 @@ class IOGenerator
         return nextBlockNum * params.blockSize;
     }
 
-    int getIOSizeForFileOffset( LARGE_INTEGER offset ) const
+    int64_t getIOSizeForFileOffset( LARGE_INTEGER offset ) const
     {
         bool isLastBlock =
             ( targetSize_ - offset.QuadPart ) < params.blockSize;
@@ -604,7 +604,7 @@ class IOGenerator
 
     bool shouldPostWrite()
     {
-        uniform_int_distribution<int> dist( 1, 100 );
+        uniform_int_distribution<int64_t> dist( 1, 100 );
 
         if( dist( rngEngine ) <= params.writePercentage )
         {
@@ -614,14 +614,14 @@ class IOGenerator
         return false;
     }
 
-    void postNextIO( int idx )
+    void postNextIO( int64_t idx )
     {
         assert( idx < params.outstandingIOs );
         
         LARGE_INTEGER fileOffset;
         fileOffset.QuadPart = getNextFileOffset();
         
-        int ioSize = getIOSizeForFileOffset( fileOffset );
+        int64_t ioSize = getIOSizeForFileOffset( fileOffset );
 
         overlapped_[idx].Offset = fileOffset.LowPart;
         overlapped_[idx].OffsetHigh = fileOffset.HighPart;
@@ -633,7 +633,7 @@ class IOGenerator
             //
             // ISSUE-REVIEW: we might pick the same offset twice.
             // Should we just round-robin instead?
-            int dataBufferOffset = getRandomLegalDataBufferOffset();
+            int64_t dataBufferOffset = getRandomLegalDataBufferOffset();
 
             checkedWriteFileEx(
                     targetHandle_,
@@ -753,7 +753,7 @@ class IOGenerator
         }
     }
 
-    void handleCompletion( int bytes, OVERLAPPED *op )
+    void handleCompletion( int64_t bytes, OVERLAPPED *op )
     {
         // First priority: post the next IO
         // Second priority: track stats for the just-completed IO
@@ -769,7 +769,7 @@ class IOGenerator
         if( shouldPostAnotherIO() )
         {
             // Convert overlapped pointer to index
-            int idx = op - &overlapped_[0];
+            int64_t idx = op - &overlapped_[0];
 
             postNextIO( idx );
         }
