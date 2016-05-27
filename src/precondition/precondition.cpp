@@ -131,7 +131,7 @@ void parseCmdline( int argc, char *argv[] )
 
                     case 'b':
                         // Block size in KB.  Convert to bytes.
-                        params.blockSize = _atoi64( arg.substr( 2 ).c_str() ) * 1024;
+                        params.blockSize = stoll( arg.substr( 2 ) ) * 1024;
                         break;
 
                     case 'r':
