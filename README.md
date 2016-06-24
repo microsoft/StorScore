@@ -1,4 +1,4 @@
-StorScore: A test framework to evaluate SSDs and HDDs
+StorScore: A test framework to evaluate SSDs and HDDs.
 =========
 
 StorScore is a component-level evaluation tool for testing storage devices.
@@ -69,7 +69,6 @@ disabled:
     Ipmiutil.exe, from the IPMI Management Utilities:
         http://ipmiutil.sourceforge.net/
 
-
 StorScore includes the following components "in the box."  We would like
 to thank the authors and acknowledge their contribution:
 
@@ -87,6 +86,13 @@ Feedback?
 
 Questions, comments, bug reports, and especially accolades may be directed
 to the developers:
--       Laura Caulfield <lauraca@microsoft.com>
--       Mark Santaniello <marksan@fb.com>
--       Bikash Sharma <bsharma@microsoft.com>
+    Laura Caulfield <laura.caulfield@microsoft.com>
+    Mark Santaniello <marksan@fb.com>
+    Bikash Sharma <bsharma@microsoft.com>
+
+Open Source Code of Conduct
+---------------------------
+
+This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/). 
+For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) 
+or contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
