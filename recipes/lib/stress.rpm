@@ -30,6 +30,8 @@ sub do_stress_tests($)
 {
     my $hours = shift;
 
+	return unless $target->is_hdd;
+
     my $SECONDS_PER_HOUR = 60 * 60;
 
     my @access_patterns = qw( random sequential );
@@ -64,6 +66,9 @@ sub do_stress_tests($)
                         write_percentage    => $write_percentage,
                         access_pattern      => $access_pattern,
                         block_size          => $block_size,
+                        purge               => 0,
+                        initialize          => 0,
+                        precondition        => 0,
                         queue_depth         => 32,
                         warmup_time         => 0,
                         run_time            => $SECONDS_PER_HOUR / $num_tests
