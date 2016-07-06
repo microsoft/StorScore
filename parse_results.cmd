@@ -1389,9 +1389,9 @@ sub scores_hash_is_valid(\%)
 
     foreach my $test_desc ( keys %scores )
     {
-        foreach my $metric ( keys $scores{$test_desc} )
+        foreach my $metric ( keys %{$scores{$test_desc} } )
         {
-            my $num_values = values $scores{$test_desc}{$metric};
+            my $num_values = values %{ $scores{$test_desc}{$metric} };
 
             if( $num_values != $expected_num_values )
             {
@@ -1467,14 +1467,14 @@ sub compute_std_scores(\%)
 
     foreach my $test_desc ( keys %raw_scores )
     {
-        foreach my $metric ( keys $raw_scores{$test_desc} )
+        foreach my $metric ( keys %{ $raw_scores{$test_desc} })
         {
-            my @values = values $raw_scores{$test_desc}{$metric};
+            my @values = values %{ $raw_scores{$test_desc}{$metric} };
 
             my $mean = mean( @values );
             my $std_dev = stddev( @values );
 
-            foreach my $device_id ( keys $raw_scores{$test_desc}{$metric} )
+            foreach my $device_id ( keys %{ $raw_scores{$test_desc}{$metric} })
             {
                 my $value = $raw_scores{$test_desc}{$metric}{$device_id}; 
            
@@ -1519,13 +1519,13 @@ sub make_bigger_better(\%)
 
     foreach my $test_desc ( keys %$href )
     {
-        foreach my $metric ( keys $href->{$test_desc} )
+        foreach my $metric ( keys %{ $href->{$test_desc} })
         {
             my $sense = get_column_sense( $metric );
 
             if( $sense =~ /smaller is better/ )
             {
-                foreach my $device_id ( keys $href->{$test_desc}{$metric} )
+                foreach my $device_id ( keys % { $href->{$test_desc}{$metric} })
                 {
                     negate( $href->{$test_desc}{$metric}{$device_id} );
                 }
@@ -1565,14 +1565,14 @@ sub normalize_scores(\%)
 
     foreach my $test_desc ( keys %std_scores )
     {
-        foreach my $metric ( keys $std_scores{$test_desc} )
+        foreach my $metric ( keys %{ $std_scores{$test_desc} })
         {
-            my @values = values $std_scores{$test_desc}{$metric};
+            my @values = values %{ $std_scores{$test_desc}{$metric} };
      
             my $min = min( @values );
             my $max = max( @values );
             
-            foreach my $device_id ( keys $std_scores{$test_desc}{$metric} )
+            foreach my $device_id ( keys %{ $std_scores{$test_desc}{$metric} })
             {
                 my $value = $std_scores{$test_desc}{$metric}{$device_id}; 
 
@@ -1650,10 +1650,10 @@ sub apply_weights_as_fractions(\%\%)
     {
         foreach my $test_desc ( keys %scores )
         {
-            foreach my $metric ( keys $scores{$test_desc} )
+            foreach my $metric ( keys %{ $scores{$test_desc} } )
             {
                 foreach my $device_id ( 
-                    keys $scores{$test_desc}{$metric} )
+                    keys %{ $scores{$test_desc}{$metric} } )
                 {
                     my $weight = 
                         $weights_as_fractions{$policy}{$test_desc}{$metric};
@@ -1682,17 +1682,17 @@ sub combine_scores(\%)
 
     foreach my $policy ( keys %weighted_score_components )
     {
-        foreach my $test_desc ( keys $weighted_score_components{$policy} )
+        foreach my $test_desc ( keys %{ $weighted_score_components{$policy} } )
         {
             foreach my $metric (
-                keys $weighted_score_components{$policy}{$test_desc} )
+                keys %{ $weighted_score_components{$policy}{$test_desc} } )
             {
                 foreach my $device_id (
                     keys
-                        $weighted_score_components
+                        %{ $weighted_score_components
                         {$policy}
                         {$test_desc}
-                        {$metric} )
+                        {$metric} })
                 {
                     my $weighted_score = 
                         $weighted_score_components
@@ -1784,10 +1784,10 @@ sub generate_scores_sheets($\%\%\%\%\%\%)
 
     foreach my $test_desc ( keys %normalized_scores )
     {
-        foreach my $metric ( keys $normalized_scores{$test_desc} )
+        foreach my $metric ( keys %{$normalized_scores{$test_desc} })
         {
             foreach my $device_id (
-                keys $normalized_scores{$test_desc}{$metric} )
+                keys %{ $normalized_scores{$test_desc}{$metric} })
             {
                 my @row_data = (
                     $device_id_to_display_name{$device_id},
