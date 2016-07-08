@@ -1389,7 +1389,7 @@ sub scores_hash_is_valid(\%)
 
     foreach my $test_desc ( keys %scores )
     {
-        foreach my $metric ( keys %{$scores{$test_desc} } )
+        foreach my $metric ( keys %{ $scores{$test_desc} } )
         {
             my $num_values = values %{ $scores{$test_desc}{$metric} };
 
@@ -1784,7 +1784,7 @@ sub generate_scores_sheets($\%\%\%\%\%\%)
 
     foreach my $test_desc ( keys %normalized_scores )
     {
-        foreach my $metric ( keys %{$normalized_scores{$test_desc} })
+        foreach my $metric ( keys %{ $normalized_scores{$test_desc} })
         {
             foreach my $device_id (
                 keys %{ $normalized_scores{$test_desc}{$metric} })

@@ -128,6 +128,7 @@ my $num_steps = $recipe->get_num_steps();
 my $num_tests = $recipe->get_num_test_steps();
 
 die "Empty recipe. Nothing to do.\n" unless $num_steps > 0;
+$recipe->check_unique_test_descriptions();
 
 print "Loaded " . $recipe_file;
 print " ($num_tests tests, $num_steps steps)\n\n";

@@ -199,8 +199,7 @@ sub canonicalize_step
         100 - $step_ref->{'write_percentage'};
 
     # ensure description can be used as a unique filename
-    $step_ref->{'description'} =
-        make_legal_filename( $step_ref->{'description'} . "-step-$number" );
+    $step_ref->{'description'} = make_legal_filename( $step_ref->{'description'});
 }
 
 sub apply_overrides
@@ -463,6 +462,26 @@ sub execute_recipe
     delete_package( $package );
 
     $self->reset_current_step();
+}
+
+sub check_unique_test_descriptions
+{
+	my $self = shift;
+
+	my %desc_hash = ();
+
+	foreach my $step (@{$self->steps})
+	{
+		
+		my $desc = $step->{'description'};
+		if ( $desc && $step->{'kind'} eq "test" )
+		{
+			die "Test description '$desc' is not unique" 
+				if ( $desc_hash{ $desc } );
+			$desc_hash{ $desc } = 1;
+		}
+	}
+
 }
 
 sub get_num_steps
