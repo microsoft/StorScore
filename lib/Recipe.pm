@@ -237,7 +237,7 @@ sub make_step
     
     # These kinds use the named-parameter idiom
     %step_args = ( %step_args, @args )
-        if $kind ~~ [qw( test initialize precondition bg_exec )]; 
+        if $kind ~~ [qw( test initialize precondition bg_exec fg_exec )]; 
    
     # idle has a single unnamed argument, the time
     %step_args = ( %step_args, run_time => shift @args )
@@ -362,7 +362,7 @@ sub execute_recipe
     my $package = "RecipeEval" . $eval_count++;
 
     my @step_kinds = 
-        qw(test purge initialize precondition bg_exec bg_killall idle);
+        qw(test purge initialize precondition bg_exec fg_exec bg_killall idle);
 
     {
         no strict 'refs';
@@ -687,6 +687,7 @@ sub get_announcement_message
     my $step_ref = shift;
     
     my $msg;
+	my $command = $step_ref->{'command'};
 
     if( $step_ref->{'kind'} eq 'test' )
     {
@@ -707,9 +708,12 @@ sub get_announcement_message
     }
     elsif( $step_ref->{'kind'} eq 'bg_exec' )
     {
-        my $command = $step_ref->{'command'};
         $msg = qq{Executing "$command" in the background};
     }
+	elsif( $step_ref->{'kind'} eq 'fg_exec' )
+	{
+		$msg = qq{Executing "$command" in the foreground};
+	}
     elsif( $step_ref->{'kind'} eq 'bg_killall' )
     {
         $msg = "Killing all background processes";
@@ -894,7 +898,7 @@ sub run_step
 
         sleep( $run_time ) unless $pretend; 
     }
-    elsif( $kind eq 'bg_exec' )
+    elsif( $kind eq 'bg_exec' || $kind eq 'fg_exec' )
     {
         # ISSUE-REVIEW: 
         # 
@@ -902,7 +906,7 @@ sub run_step
         #    purge();
         #    bg_exec( do something to target file here );
         #
-        # Does this make sense in a general purpose bg_exec?
+        # Does this make sense in a general purpose exec (fg & bg)?
         
         $self->target->prepare()
             unless $self->target->is_prepared();
@@ -914,20 +918,22 @@ sub run_step
         }
 
         my $command = $step_ref->{'command'};
-        
-        my $pid = execute_task(
-            $command,
-            background => 1,
-            new_window => 1
-        ); 
-        
-        my $description = $step_ref->{'description'};
 
-        push @{$self->bg_processes}, {
-            pid => $pid,
-            command => $command,
-            description => $description
-        };
+		my $pid = execute_task(
+			$command,
+			background => ($kind eq 'bg_exec'),
+			new_window => 1
+		); 
+
+		if( $kind eq 'bg_exec')
+		{
+			my $description = $step_ref->{'description'};
+			push @{$self->bg_processes}, {
+				pid => $pid,
+				command => $command,
+				description => $description
+			};
+		}
 
     }
     elsif( $kind eq "bg_killall" )

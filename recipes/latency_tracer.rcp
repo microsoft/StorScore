@@ -1,0 +1,93 @@
+# vim: set filetype=perl:
+
+# StorScore
+#
+# Copyright (c) Microsoft Corporation
+#
+# All rights reserved.
+#
+# MIT License
+#
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the "Software"),
+# to deal in the Software without restriction, including without limitation
+# the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED *AS IS*, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+# DEALINGS IN THE SOFTWARE.
+
+
+# initialize & precondition
+# fg_exec start tracing
+# short workload
+# bg_exec end tracing
+
+my $desc_prefix = "Targeted Test Tracing";
+my $desc = "4K Random Reads";
+
+my %workload = (
+    write_percentage    => 0,
+    access_pattern      => "random",
+    block_size          => '4K',
+    queue_depth         => 1,
+);
+
+# Complete all drive preparation before turning on collection of trace events
+purge();
+initialize();
+precondition(
+    %workload,
+    description => "$desc_prefix $desc"
+);
+
+# Begin collecting ETW trace events with xperf
+my $cmd = "xperf ";
+$cmd .= "-start STORPORT ";
+$cmd .= "-on Microsoft-Windows-Storport:1048576:4 ";
+$cmd .= "-BufferSize 1024 ";
+$cmd .= "-MinBuffers 4096 ";
+$cmd .= "-MaxBuffers 4096";
+fg_exec(
+    description => "start hw tracing",
+    command => $cmd,
+);
+
+$cmd = "xperf ";
+$cmd .= "-on DISK_IO+FILE_IO+sysprof+dpc+interrupt ";
+$cmd .= "-stackwalk profile ";
+fg_exec(
+    description => "start sw tracing",
+    command => $cmd,
+);
+
+# Execute the test under study
+test(
+    %workload,
+    description => "$desc_prefix $desc",
+    purge => 0,
+    initialize => 0,
+    precondition => 0,
+    run_time => 300,
+);
+
+# Stop collecting trace events
+my $results = $self->output_dir;
+fg_exec(
+    description => "stop hw tracing",
+    command => "xperf -stop STORPORT -d $results\\HW.etl",
+);
+
+fg_exec(
+    description => "stop sw tracing",
+    command => "xperf -d $results\\SW.etl",
+);
