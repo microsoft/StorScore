@@ -59,7 +59,8 @@ sub do_stress_tests($)
                         "$write_percentage-writes-" .
                         "$block_size-" .
                         "$access_pattern-" .
-                        "QD32";
+                        "QD32-" .
+                        "iter$hours";
 
                     test( 
                         description         => $description, 

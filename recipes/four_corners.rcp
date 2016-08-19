@@ -26,4 +26,42 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-include 'recipes\four_corners.rcp';
+test(
+    description         => "4k Random Reads",
+    write_percentage    => 0,
+    access_pattern      => 'random',
+    block_size          => '4K',
+    queue_depth         => 1,
+    warmup_time         => 60,
+    run_time            => 3600,
+);
+
+test(
+    description         => "4k Random Writes",
+    write_percentage    => 100,
+    access_pattern      => 'random',
+    block_size          => '4K',
+    queue_depth         => 1,
+    warmup_time         => 60,
+    run_time            => 3600,
+);
+
+test(
+    description         => "128k Sequential Reads",
+    write_percentage    => 0,
+    access_pattern      => 'sequential',
+    block_size          => '128K',
+    queue_depth         => 32,
+    warmup_time         => 60,
+    run_time            => 3600,
+);
+
+test(
+    description         => "128k Sequential Writes",
+    write_percentage    => 100,
+    access_pattern      => 'sequential',
+    block_size          => '128K',
+    queue_depth         => 32,
+    warmup_time         => 60,
+    run_time            => 3600,
+);
