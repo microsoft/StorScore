@@ -29,6 +29,15 @@ Then when you parse, you can evaluate just drive batch 1 with the following:
 
 $>parse_results.cmd results\DriveBatch1\* results_batch_1.xlsx
 
-One final point -- the scoring works best if you use the same recipe on all
+The scoring works best if you use the same recipe on all
 the test runs in a batch.  If you use different recipes, there may not be
 enough overlap in the workloads run on each drive to generate a score.
+
+
+Two final tricks for a quick start -- First, the --demo_mode generates
+innacurate results, but in a fraction of the normal time. *Do not* use these
+results for anything important.  Storscore with the --demo_mode flag is just
+that -- a demo.
+
+Second, you can play with the tool without destroying a drive by targeting a
+small file.
