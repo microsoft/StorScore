@@ -76,11 +76,22 @@ sub parse_info($$)
     my $file_name = shift;
 
     open my $FILE, '<', $file_name
-        or die "Error opening smart.txt";
+        or die "Error opening $file_name";
+        #or die "Error opening smart.txt";
+
+    while( my $line = <$FILE> )
+    {
+        if( $line =~ /START OF INFORMATION SECTION/i )
+        {
+            <$FILE>; # skip header line 
+            last;
+        }
+    }
 
     while( my $line = <$FILE> )
     {
         do_simple_extract( $line, $stats_ref, \@extract_rules_smart_info );
+        last if( $line =~ /START OF ENABLE/i );
     }
 
     post_process( $stats_ref );
@@ -137,15 +148,15 @@ sub parse_attributes($$$)
 
         if( $attribute_id == $host_writes )
         {
-            $stats_ref->{"Host Writes $suffix"} = $raw_value;
+            $stats_ref->{"Host Writes$suffix"} = $raw_value;
         }
         elsif( $attribute_id == $ctrl_writes )
         {
-            $stats_ref->{"Controller Writes $suffix"} = $raw_value;
+            $stats_ref->{"Controller Writes$suffix"} = $raw_value;
         }
         elsif( $attribute_id == $wear_range )
         {
-            $stats_ref->{"Wear Range $suffix"} = $raw_value;
+            $stats_ref->{"Wear Range$suffix"} = $raw_value;
         }
     }
 

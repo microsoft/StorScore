@@ -125,7 +125,7 @@ sub run($$)
     $cmd .= qq(-q"$entropy_file" );
     
     # All-purpose escape hatch.  Support arbitrary args.
-    $cmd .= " " . $self->cmd_line->io_generator_args
+    $cmd .= " " . $self->cmd_line->io_generator_args . " "
         if defined $self->cmd_line->io_generator_args;
 
     if( $self->cmd_line->raw_disk )

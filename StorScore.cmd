@@ -63,7 +63,7 @@ use Util;
 use CommandLine;
 use Target;
 use PreconditionRunner;
-use SmartCtlRunner;
+use SmartRunner;
 use Recipe;
 use DiskSpdRunner;
 use SqlioRunner;
@@ -221,11 +221,11 @@ if( $cmd_line->collect_smart )
 {
     if( $target->supports_smart )
     {
-        print "Collecting SMART counters via SmartCtl.\n";
+        print "Collecting SMART counters.\n";
     }
     else
     {
-        warn "SmartCtl missing or broken. SMART capture disabled.\n";
+        warn "SMART capture disabled. SmartCtl may be missing.\n";
     }
 }
 
@@ -268,15 +268,15 @@ my $wmic_runner = WmicRunner->new(
 
 $wmic_runner->collect( 'wmic.txt' );
 
-my $smartctl_runner = undef;
+my $smart_runner = undef;
 
 if( $cmd_line->collect_smart and $target->supports_smart )
 {
-    $smartctl_runner = SmartCtlRunner->new(
+    $smart_runner = SmartRunner->new(
         physical_drive => $target->physical_drive,
     );
 
-    $smartctl_runner->collect(
+    $smart_runner->collect(
         file_name => "smart.txt",
         output_dir => $output_dir,
         do_identify => 1
@@ -308,7 +308,7 @@ print "Testing...\n";
 
 $recipe->run(
     io_generator    => $iogen,
-    smartctl_runner => $smartctl_runner,
+    smart_runner    => $smart_runner,
     logman_runner   => $logman_runner,
     power           => $power
 );

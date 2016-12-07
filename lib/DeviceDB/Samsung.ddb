@@ -112,6 +112,13 @@ $device_db{'NVMe Samsung SSD PM95'} =
 $device_db{'NVMe SAMSUNG MZ1LV960'} = 
 {
     'Friendly Name'   => 'Samsung PM953 960GB',
+    'Rated PE Cycles' => 6000,
+};
+
+$device_db{'NVMe SAMSUNG MZ1LW960'} = 
+{
+    'Friendly Name'   => 'Samsung PM963 960GB',
+    'Rated PE Cycles' => 6000,
 };
 
 $device_db{'SAMSUNG MZ7KM960HAHP-00005'} = 

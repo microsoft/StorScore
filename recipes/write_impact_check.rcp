@@ -81,8 +81,8 @@ unless( $cmd_line->raw_disk )
             # causing the backgrounded process to die with an error.
 
             purge();
-			initialize();
-			bg_exec(
+            initialize();
+            bg_exec(
                 description => $bg_desc,
                 command => $cmd,
             );

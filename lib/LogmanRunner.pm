@@ -228,6 +228,15 @@ sub is_counter_relevant($)
         }
     }
 
+    if( $name =~ /Memory/ )
+    {
+        if ( ( $name =~ /System Driver Total Bytes/ ) or
+             ( $name =~ /System Driver Resident Bytes/ ) )
+         {
+             return 1;
+         }
+    }
+
     return 0;
 }
 

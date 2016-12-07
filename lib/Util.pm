@@ -714,6 +714,9 @@ sub do_simple_extract($$@)
     my $line = shift;
     my $href = shift;
     my @rules = @{shift @_};
+    my %args = @_;
+
+    my $suffix = $args{'suffix'} // "";
 
     foreach my $rule ( @rules )
     {
@@ -735,7 +738,7 @@ sub do_simple_extract($$@)
 
                 for( my $i = 0; $i < $num_vars; $i++ )
                 {
-                    $href->{$vars[$i]} = $matches[$i];
+                    $href->{"$vars[$i]$suffix"} = $matches[$i];
                 }
             }
         }
@@ -743,7 +746,7 @@ sub do_simple_extract($$@)
         {
             if( $line =~ /$match/ )
             {
-                $href->{$store} = $1;
+                $href->{"$store$suffix"} = $1;
             }
         }
     }

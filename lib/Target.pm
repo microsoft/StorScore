@@ -35,7 +35,7 @@ no if $PERL_VERSION >= 5.017011,
     warnings => 'experimental::smartmatch';
 
 use Util;
-use SmartCtlRunner;
+use SmartRunner;
 use PreconditionRunner;
 
 has 'cmd_line' => (
@@ -84,6 +84,13 @@ has 'sata_version' => (
     isa => 'Maybe[Str]',
     default => undef,
     writer => '_sata_version'
+);
+
+has 'protocol_type' => (
+    is => 'ro',
+    isa => 'Maybe[Str]',
+    default => undef,
+    writer => '_protocol_type'
 );
 
 has 'model' => (
@@ -178,10 +185,15 @@ sub type
     return $self->cmd_line->target_type
         unless $self->cmd_line->target_type eq 'auto';
     
-    if( $self->supports_smart and 
-        $self->rotation_rate =~ /Solid State Device/ )
+    if( $self->supports_smart )
     {
-        return 'ssd';
+        # NB: the order of the following two checks matters
+        # the NVMe smart log does not define the rotation rate
+        if( $self->protocol_type =~ /nvme/ or 
+    	    $self->rotation_rate =~ /Solid State Device/ )
+        {
+            return 'ssd';
+        }
     }
       
     return 'ssd' if $self->model =~ /NVMe|SSD/i;
@@ -263,15 +275,16 @@ sub BUILD
 
     $self->_model( get_drive_model( $self->physical_drive ) );
 
-    my $smartctl = SmartCtlRunner->new(
+    my $smart = SmartRunner->new(
         physical_drive => $self->physical_drive
     );
 
-    if( $smartctl->is_functional )
+    if( $smart->is_functional )
     {
         $self->_supports_smart( 1 );
-        $self->_rotation_rate( $smartctl->rotation_rate );
-        $self->_sata_version( $smartctl->sata_version );
+        $self->_rotation_rate( $smart->rotation_rate );
+        $self->_sata_version( $smart->sata_version );
+        $self->_protocol_type( $smart->device_type );
     }
   
     if( $self->is_existing_file_or_volume )

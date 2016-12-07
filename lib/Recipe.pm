@@ -85,11 +85,11 @@ has 'io_generator' => (
     writer => '_io_generator'
 );
 
-has 'smartctl_runner' => (
+has 'smart_runner' => (
     is     => 'ro',
-    isa    => 'Maybe[SmartCtlRunner]',
+    isa    => 'Maybe[SmartRunner]',
     default => undef,
-    writer => '_smartctl_runner'
+    writer => '_smart_runner'
 );
 
 has 'logman_runner' => (
@@ -831,11 +831,11 @@ sub run_step
             $self->io_generator->run( $step_ref, 'warmup' );
         }
 
-        $self->smartctl_runner->collect(
+        $self->smart_runner->collect(
             file_name => "smart-before-$desc.txt",
             output_dir => $self->output_dir,
         )
-        if defined $self->smartctl_runner;
+        if defined $self->smart_runner;
 
         if( defined $self->logman_runner )
         {
@@ -851,11 +851,11 @@ sub run_step
 
         $self->io_generator->run( $step_ref, 'test' );
 
-        $self->smartctl_runner->collect(
+        $self->smart_runner->collect(
             file_name => "smart-after-$desc.txt",
             output_dir => $self->output_dir,
         )
-        if defined $self->smartctl_runner;
+        if defined $self->smart_runner;
 
         $self->logman_runner->stop() if defined $self->logman_runner;
         $self->power->stop() if defined $self->power;
@@ -954,7 +954,7 @@ sub run
     my %args = @_;
 
     $self->_io_generator( $args{'io_generator'} );
-    $self->_smartctl_runner( $args{'smartctl_runner'} );
+    $self->_smart_runner( $args{'smart_runner'} );
     $self->_logman_runner( $args{'logman_runner'} );
     $self->_power( $args{'power'} );
 

@@ -16,7 +16,7 @@ use FindBin;
 use lib "$FindBin::Bin\\..";
 use lib "$FindBin::Bin\\..\\lib";
 
-use SmartCtlRunner;
+use SmartRunner;
 
 my $script_name = basename( $PROGRAM_NAME, ".cmd" );
 
@@ -30,7 +30,7 @@ unless( defined $physical_drive and $physical_drive =~ /\d+/ )
     die "Usage: $script_name <physical drive number>\n";
 }
 
-my $smart = SmartCtlRunner->new(
+my $smart = SmartRunner->new(
     physical_drive => $physical_drive
 );
 

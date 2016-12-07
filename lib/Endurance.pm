@@ -41,6 +41,7 @@ use vars qw(@ISA @EXPORT);
 sub compute_endurance($)
 {
     my $stats_ref = shift;
+    my $smart_tool = shift;
     
     my $model_name = $stats_ref->{'Device Model'};
     my $ddb_ref = $device_db{ $model_name };
@@ -71,15 +72,14 @@ sub compute_host_writes($$)
     my $stats_ref = shift;
     my $ddb_ref = shift;
 
-    return unless 
-        exists $ddb_ref->{'Host Writes'} and
-        exists $stats_ref->{'Host Writes Before'};  
+    return unless exists $stats_ref->{'Host Writes Before'};  
 
     my $before = $stats_ref->{'Host Writes Before'};
     my $after = $stats_ref->{'Host Writes After'};
     my $diff = $after - $before;
 
-    my $units = $ddb_ref->{'Host Writes'}{'Unit'};
+    # if the device db doesn't define a unit, assume it's an NVMe drive with the default units
+    my $units = $ddb_ref->{'Host Writes'}{'Unit'} // BYTES_PER_MB_BASE2;
 
     warn "\tPossible overflow in host writes SMART counter. WAF is wrong.\n"
         if $after < $before;
@@ -95,15 +95,13 @@ sub compute_controller_writes($$)
     my $stats_ref = shift;
     my $ddb_ref = shift;
 
-    return unless 
-        exists $ddb_ref->{'Controller Writes'} and
-        exists $stats_ref->{'Controller Writes Before'};  
+    return unless exists $stats_ref->{'Controller Writes Before'};  
 
     my $before = $stats_ref->{'Controller Writes Before'};
     my $after = $stats_ref->{'Controller Writes After'};
     my $diff = $after - $before;
 
-    my $units = $ddb_ref->{'Controller Writes'}{'Unit'};
+    my $units = $ddb_ref->{'Controller Writes'}{'Unit'} // BYTES_PER_MB_BASE2;
 
     warn "\tPossible overflow in ctlr writes SMART counter. WAF is wrong.\n"
 	    if $after < $before;
@@ -169,13 +167,13 @@ sub compute_nand_metrics($$)
     return unless exists $stats_ref->{'Drive Write Amplification'};
 
     my $drive_waf = $stats_ref->{'Drive Write Amplification'};
-    my $app_write_bw = $stats_ref->{'MB/s Write'};
+    my $app_write_bw = $stats_ref->{'MB/sec Write'};
     my $app_gb_written = $stats_ref->{'GB Write'};
 
     $stats_ref->{'NAND Writes (GB)'} = $app_gb_written * $drive_waf;
 
-    $stats_ref->{'NAND Write BW (MB/s)'} = $app_write_bw * $drive_waf
-        if exists $stats_ref->{'MB/s Write'};
+    $stats_ref->{'NAND Write BW (MB/sec)'} = $app_write_bw * $drive_waf
+        if exists $stats_ref->{'MB/sec Write'};
 }
 
 sub compute_dwpd($$)

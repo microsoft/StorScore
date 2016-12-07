@@ -80,6 +80,7 @@ use PreconditionParser;
 use LogmanParser;
 use Power;
 use SmartCtlParser;
+use StorageToolParser;
 use WmicParser;
 use Endurance;
 
@@ -510,6 +511,15 @@ push @cols,
         name   => 'System Power (W)',
         format => '#,##0.00',
     },
+    { 
+        name   => 'Driver Memory (MB)',
+        format => '#,##0.00',
+    },
+    {   name   => 'Driver Resident Memory (MB)',
+        format => '#,##0.00',
+    },
+    { name => 'IO Generator' },
+    { name => 'Smart Collector' },
 );
    
 # don't want 3rd parties to see these
@@ -544,7 +554,7 @@ push @cols,
         format  => '#,###.00',
     },
     {
-        name    => 'NAND Write BW (MB/s)',
+        name    => 'NAND Write BW (MB/sec)',
         format  => '#,##0.00',
     },
     { name => 'Log File' },
@@ -558,7 +568,6 @@ push @cols,
         name    => 'Serial Number',
         protect => 1,
     },
-    { name => 'IO Generator' },
     { name => 'Notes' },
 ) 
 unless $sanitize;
@@ -609,10 +618,42 @@ sub parse_directories(@)
 
         my %dir_stats;
 
-        if( -e 'smart.txt' )
+        my $try_precondition = 1;
+        my $try_smart_attr = 1;
+        my $try_logman = 1;
+        my $try_power = 1;
+
+        my $smart;
+        my $smart_file = 'smart.txt';
+        $dir_stats{'Smart Collector'} = "unavailable";
+        if( -e $smart_file )
         {
-            my $smartctl = SmartCtlParser->new();
-            $smartctl->parse_info( \%dir_stats, 'smart.txt' );
+            open my $SMART, "<$smart_file"
+                or die "Error opening $smart_file";
+
+            my $cmd_line = <$SMART>;
+            if( $cmd_line =~ /smartctl/i )
+            {
+                $dir_stats{'Smart Collector'} = "smartctl";
+                $smart = SmartCtlParser->new();
+            }
+            elsif( $cmd_line =~ /StorageTool/i )
+            {
+                $dir_stats{'Smart Collector'} = "StorageTool";
+                $smart = StorageToolParser->new();
+            }
+            else
+            {
+                die "Unknown SMART collector\n";
+            }
+
+            close $SMART;
+
+            $smart->parse_info( \%dir_stats, $smart_file );
+        }
+        else
+        {
+            $try_smart_attr = 0;
         }
         
         if( -e 'wmic.txt' )
@@ -626,11 +667,6 @@ sub parse_directories(@)
         $dir_stats{'Directory'} = "external:$dir";
         $dir_stats{'Unique Device ID'} = $directory_number;
          
-        my $try_precondition = 1;
-        my $try_smart_attr = 1;
-        my $try_logman = 1;
-        my $try_power = 1;
-
         my @current_device;
 
         foreach my $test_file_name ( glob( $data_file_glob ) )
@@ -679,24 +715,22 @@ sub parse_directories(@)
 
             if( $try_smart_attr )
             {
-                my $smartctl = SmartCtlParser->new();
-
                 my $success = 1;
 
                 $success &= 
-                    $smartctl->parse_attributes( 
+                    $smart->parse_attributes( 
                         "smart-before-$base_name.txt",
-                        'Before',
+                        ' Before',
                         \%file_stats
                     );
 
                 $success &= 
-                    $smartctl->parse_attributes( 
+                    $smart->parse_attributes( 
                         "smart-after-$base_name.txt",
-                        'After',
+                        ' After',
                         \%file_stats
                     ) if $success;
-               
+
                 if( $success )
                 {
                     compute_endurance( \%file_stats );

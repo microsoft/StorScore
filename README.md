@@ -60,6 +60,9 @@ You must download and install the following or StorScore will not work:
     The Visual Studio 2013 C++ runtime libraries for x86 & x64:
         http://www.microsoft.com/en-us/download/details.aspx?id=40784
 
+    The Visual Studio 2015 C++ runtime libraries for x86 & x64:
+        https://www.microsoft.com/en-us/download/details.aspx?id=48145
+
 StorScore will work without these components, but some features will be
 disabled:
 
@@ -68,6 +71,15 @@ disabled:
     
     Ipmiutil.exe, from the IPMI Management Utilities:
         http://ipmiutil.sourceforge.net/
+
+You can use StorScore to run tests and parse their data without these 
+components, but you will need them to edit and compile the StorageTool:
+
+    Windows Driver Kit (WDK):
+        https://developer.microsoft.com/en-us/windows/hardware/windows-driver-kit
+
+    Windows Software Development Kit (SDK):
+        https://developer.microsoft.com/en-US/windows/downloads/windows-10-sdk
 
 StorScore includes the following components "in the box."  We would like
 to thank the authors and acknowledge their contribution:

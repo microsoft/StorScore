@@ -53,7 +53,7 @@ sub do_workload($$$$$$)
 }
     
 my $count = 0;
-do_workload( "Targeted Transition Init", "2M", 128, 100, "sequential", 7200);
+do_workload( "Targeted Transistion Init", "2M", 128, 100, "sequential", 7200 );
 
 foreach my $block_size ( qw( 1K 2K 4K 8K 16K 32K 64K 128K 256K 512K 1M 2M ) )
 {
@@ -63,7 +63,7 @@ foreach my $block_size ( qw( 1K 2K 4K 8K 16K 32K 64K 128K 256K 512K 1M 2M ) )
         {
             foreach my $pattern ( qw( random sequential ) )
             {
-                my $desc = "targeted Transition $count";
+                my $desc = "Targeted Transition $count";
                 do_workload( $desc, $block_size, $QD, $write_perc, $pattern, 600 );
                 $count += 1;
             }

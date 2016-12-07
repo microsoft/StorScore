@@ -103,6 +103,18 @@ sub parse($$)
                 warn "\tFailed to achieve target QD: $test_desc\n";
             }
         }
+        elsif( $counter_name =~ /System Driver Total Bytes/ )
+        {
+            $stats_ref->{'Driver Memory (MB)'} = $average / ( 1024 * 1024 );
+        }
+        elsif( $counter_name =~ /System Driver Resident Bytes/ )
+        {
+            $stats_ref->{'Driver Resident Memory (MB)'} = $average / ( 1024 * 1024 );
+        }
+        else
+        {
+            warn "\tUnnammed Counter: $counter_name\n";
+        }
     }
 
     return 1;
