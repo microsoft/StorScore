@@ -30,4 +30,3 @@ include 'smart_check.rcp';
 include 'flush_check.rcp';
 include 'compress_check.rcp';
 include 'write_impact_check.rcp';
-include 'transitions.rcp';
