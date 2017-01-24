@@ -137,6 +137,16 @@ $device_db{'SAMSUNG MZ7KM960HAHP-00005'} =
     'Rated PE Cycles' => 35000,
 };
 
+$device_db{'SAMSUNG MZ7KM480HMHQ-000MV'} = 
+{
+    'Friendly Name' => 'Samsung SM863A 480GB',
+};
+
+$device_db{'SAMSUNG SAMSUNG MZ7KM480HAHP-000MV'} = 
+{
+    'Friendly Name' => 'Samsung SM863 480GB',
+};
+
 $device_db{'SAMSUNG MZ7LM960HCHP-00003'} = 
 {
     'Friendly Name'   => 'Samsung PM863 960GB',
