@@ -115,7 +115,7 @@ else
         "$prefix-" . strftime( "%Y-%m-%d_%H-%M-%S", localtime );
 }
 
-print "Targeting " . uc( $target->type ) . ": " . $target->model . "\n";
+print "\nTargeting " . uc( $target->type ) . ": " . $target->model . "\n\n";
 
 my $recipe = Recipe->new(
     file_name            => $recipe_file,

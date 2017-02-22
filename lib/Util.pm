@@ -43,6 +43,22 @@ use Win32::API;
 use Win32::Process;
 use Encode;
 
+use Module::Load::Conditional 'check_install';
+
+if( check_install( module => 'XML::LibXML' ) )
+{
+    # require runs at execution time, whereas use runs at compile time
+    require XML::LibXML;
+}
+else
+{
+    warn "The XML::LibXML package from CPAN is required and not installed.\n";
+    warn "Please install it via command line:\n";
+    warn "\t\$> ppm install XML::LibXML \\\\ for ActiveState perl installs\n";
+    warn "\t\$> cpan XML::LibXML        \\\\ for Strawberry  perl installs\n";
+    exit( -1 );
+}
+
 no if $PERL_VERSION >= 5.017011, 
     warnings => 'experimental::smartmatch';
 
@@ -59,7 +75,7 @@ use vars qw(@ISA @EXPORT);
     BYTES_PER_KB_BASE10
     BYTES_PER_SECTOR
     BYTES_IN_2MB
-    $TEST_FILE_NAME
+    $TEST_FILE_STUB
     $script_name
     $script_dir
     $recipes_dir
@@ -135,7 +151,7 @@ use constant BYTES_PER_KB_BASE10 => 1000;
 use constant BYTES_PER_SECTOR => 512;
 use constant BYTES_IN_2MB => 1024 * 1024 * 2;
 
-our $TEST_FILE_NAME = 'testfile.dat';
+our $TEST_FILE_STUB = 'testfile';
 
 our $script_name = basename( $PROGRAM_NAME, ".cmd" );
 our $script_dir = dirname( $PROGRAM_NAME );
@@ -333,7 +349,7 @@ sub human_to_bytes($)
     return ( $human << 10 ) if $human =~ s/(\d+)\s*KB?$/$1/i;
     return $human if $human =~ s/(\d+)\s*B?$/$1/i;
     
-    die "Cannot parse the human-readable value";
+    die "Cannot parse the human-readable value, \"$human\"";
 }
 
 sub human_to_kilobytes($)
@@ -500,7 +516,7 @@ sub detect_scep_and_warn()
         You have the following options:
             - Run on a machine without SCEP
             - Disable SCEP real-time protection
-            - Exclude $TEST_FILE_NAME from SCEP scan.
+            - Exclude $TEST_FILE_STUB n.dat from SCEP scan.
 
 WARNING
     }

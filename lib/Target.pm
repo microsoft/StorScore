@@ -369,6 +369,7 @@ sub purge
 sub prepare
 {
     my $self = shift;
+    my $test_ref = shift;
 
     return if $self->is_prepared;
 
@@ -397,21 +398,30 @@ sub prepare
         # Support testing less then 100% of the disk
         $size = int( $size * $self->cmd_line->active_range / 100 );
 
-        # Round to an even increment of 2MB.
-        # Idea is to ensure the file size is an even multiple 
-        # of pretty much any block size we might test. 
-        $size = int( $size / BYTES_IN_2MB ) * BYTES_IN_2MB;
+        my $file_count = $test_ref->{'target_count'} // 1;
 
-        $self->_file_name( $self->volume . "\\$TEST_FILE_NAME" );
+        # Divide active range evenly among all files
+        $size = int( $size / $file_count );
 
-        if( -e $self->file_name and not $pretend )
+        for my $file_num ( 1 .. $file_count )
         {
-            die "Error: target file " . $self->file_name . " exists!\n";
-        }
+            # Round to an even increment of 2MB.
+            # Idea is to ensure the file size is an even multiple 
+            # of pretty much any block size we might test. 
+            $size = int( $size / BYTES_IN_2MB ) * BYTES_IN_2MB;
 
-        fast_create_file( $self->file_name, $size ) 
-            or die "Couldn't create $size byte file: " .
-                $self->file_name . "\n";
+            my $file_name = $self->volume . "\\$TEST_FILE_STUB$file_num.dat";
+            $self->_file_name( $file_name );
+
+            if( -e $self->file_name and not $pretend )
+            {
+                die "Error: target file " . $self->file_name . " exists!\n";
+            }
+
+            fast_create_file( $self->file_name, $size ) 
+                or die "Couldn't create $size byte file: " .
+                    $self->file_name . "\n";
+        }
     }
 
     if( defined $self->volume )
@@ -476,7 +486,7 @@ sub initialize
     if( defined $test_ref )
     {
         # Future work: allow for custom init pattern
-        ...
+        # ...
     }
     
     unless( $self->do_initialize )
@@ -497,7 +507,7 @@ sub initialize
         return;
     }
 
-    $self->prepare() unless $self->is_prepared();
+    $self->prepare( $test_ref ) unless $self->is_prepared();
    
     $self->precondition_runner->write_num_passes(
         msg_prefix => $msg_prefix . "Initializing: ",
@@ -515,7 +525,7 @@ sub precondition
     my $msg_prefix = $args{'msg_prefix'} // die;
     my $output_dir = $args{'output_dir'} // die;
     my $test_ref = $args{'test_ref'} // die;
-    
+
     unless( $self->do_precondition )
     {
         my $skip_requested =
@@ -534,8 +544,8 @@ sub precondition
         return;
     }
     
-    $self->prepare() unless $self->is_prepared();
-   
+    $self->prepare( $test_ref ) unless $self->is_prepared();
+
     $self->precondition_runner->run_to_steady_state(
         msg_prefix => $msg_prefix . "Preconditioning: ",
         output_dir => $output_dir,

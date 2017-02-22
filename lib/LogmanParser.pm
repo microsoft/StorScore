@@ -80,18 +80,20 @@ sub parse($$)
         
         if( $counter_name =~ /Processor Time/ )
         {
-            $stats_ref->{'CPU Util'} = $average / 100;
+            $stats_ref->{'Measurements'}{'Total'}{'CPU Util'} = $average / 100;
             $cpu_seen = 1;
         }
         elsif( $counter_name =~ /Disk Queue Length/ )
         {
-            $stats_ref->{'Measured QD'} = $average;
+            $stats_ref->{'Measurements'}{'Total'}{'Measured QD'} = $average;
             $qd_seen = 1;
 
             # Raise a warning if the percentage difference between
             # actual QD and measured QD exceeds 90%
-            my $target_qd = $stats_ref->{'QD'};
-            my $measured_qd = $stats_ref->{'Measured QD'};
+            my $target_qd =
+                $stats_ref->{'Workloads'}{'Total'}{'QD'};
+            my $measured_qd =
+                $stats_ref->{'Measurements'}{'Total'}{'Measured QD'};
 
             my $qd_threshold = 90;
             my $qd_diff = abs($target_qd - $measured_qd) / $target_qd * 100;
@@ -105,11 +107,11 @@ sub parse($$)
         }
         elsif( $counter_name =~ /System Driver Total Bytes/ )
         {
-            $stats_ref->{'Driver Memory (MB)'} = $average / ( 1024 * 1024 );
+            $stats_ref->{'Measurements'}{'Total'}{'Driver Memory (MB)'} = $average / ( 1024 * 1024 );
         }
         elsif( $counter_name =~ /System Driver Resident Bytes/ )
         {
-            $stats_ref->{'Driver Resident Memory (MB)'} = $average / ( 1024 * 1024 );
+            $stats_ref->{'Measurements'}{'Total'}{'Driver Resident Memory (MB)'} = $average / ( 1024 * 1024 );
         }
         else
         {

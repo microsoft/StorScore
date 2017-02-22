@@ -63,6 +63,14 @@ You must download and install the following or StorScore will not work:
     The Visual Studio 2015 C++ runtime libraries for x86 & x64:
         https://www.microsoft.com/en-us/download/details.aspx?id=48145
 
+StorScore requires libXML.  Install it from the command line:
+    
+    For ActiveState perl installs:
+        $> ppm install XML::LibXML
+
+    For Strawberry perl installs:
+        $> cpan XML::LibXML
+
 StorScore will work without these components, but some features will be
 disabled:
 

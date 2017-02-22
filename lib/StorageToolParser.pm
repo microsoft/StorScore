@@ -162,7 +162,7 @@ sub parse_attributes($$$)
     {
         do_simple_extract( 
             $line, 
-            $stats_ref, 
+            $stats_ref->{'Measurements'}{'Total'}, 
             \@extract_rules_log_entries,
             suffix => $suffix );
     }

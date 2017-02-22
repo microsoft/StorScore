@@ -72,10 +72,10 @@ sub compute_host_writes($$)
     my $stats_ref = shift;
     my $ddb_ref = shift;
 
-    return unless exists $stats_ref->{'Host Writes Before'};  
+    return unless exists $stats_ref->{'Measurements'}{'Total'}{'Host Writes Before'};  
 
-    my $before = $stats_ref->{'Host Writes Before'};
-    my $after = $stats_ref->{'Host Writes After'};
+    my $before = $stats_ref->{'Measurements'}{'Total'}{'Host Writes Before'};
+    my $after = $stats_ref->{'Measurements'}{'Total'}{'Host Writes After'};
     my $diff = $after - $before;
 
     # if the device db doesn't define a unit, assume it's an NVMe drive with the default units
@@ -87,7 +87,8 @@ sub compute_host_writes($$)
     $stats_ref->{'Notes'} .= "Host writes too small ($diff). WAF is wrong; "
         if $diff < 5;
 
-    $stats_ref->{'Host Writes'} = ( $after - $before ) * $units;
+    $stats_ref->{'Measurements'}{'Total'}{'Host Writes'} =
+        ( $after - $before ) * $units;
 }
 
 sub compute_controller_writes($$)
@@ -95,10 +96,10 @@ sub compute_controller_writes($$)
     my $stats_ref = shift;
     my $ddb_ref = shift;
 
-    return unless exists $stats_ref->{'Controller Writes Before'};  
+    return unless exists $stats_ref->{'Measurements'}{'Total'}{'Controller Writes Before'};  
 
-    my $before = $stats_ref->{'Controller Writes Before'};
-    my $after = $stats_ref->{'Controller Writes After'};
+    my $before = $stats_ref->{'Measurements'}{'Total'}{'Controller Writes Before'};
+    my $after = $stats_ref->{'Measurements'}{'Total'}{'Controller Writes After'};
     my $diff = $after - $before;
 
     my $units = $ddb_ref->{'Controller Writes'}{'Unit'} // BYTES_PER_MB_BASE2;
@@ -109,9 +110,11 @@ sub compute_controller_writes($$)
     $stats_ref->{'Notes'} .= "Ctlr writes too small ($diff).  WAF is wrong; "
         if $diff < 5;
 
-    $stats_ref->{'Controller Writes'} = ( $after - $before ) * $units;
+    $stats_ref->{'Measurements'}{'Total'}{'Controller Writes'} =
+        ( $after - $before ) * $units;
 
-    $stats_ref->{'Controller Writes'} += $stats_ref->{'Host Writes'} 
+    $stats_ref->{'Measurements'}{'Total'}{'Controller Writes'} +=
+        $stats_ref->{'Measurements'}{'Total'}{'Host Writes'} 
         if exists $ddb_ref->{'Controller Writes'}{'Additive'};
 }
 
@@ -120,13 +123,14 @@ sub compute_file_system_waf($$)
     my $stats_ref = shift;
     my $ddb_ref = shift;
 
-    return unless exists $stats_ref->{'Host Writes'};
+    return unless exists $stats_ref->{'Measurements'}{'Total'}{'Host Writes'};
 
     my $host_writes_in_GB =
-        $stats_ref->{'Host Writes'} / BYTES_PER_GB_BASE2;
+        $stats_ref->{'Measurements'}{'Total'}{'Host Writes'} /
+        BYTES_PER_GB_BASE2;
 
-    $stats_ref->{'Filesystem Write Amplification'} = 
-        $host_writes_in_GB / $stats_ref->{'GB Write'};
+    $stats_ref->{'Measurements'}{'Total'}{'Filesystem Write Amplification'} = 
+        $host_writes_in_GB / $stats_ref->{'Measurements'}{'Total'}{'GB Write'};
 }
                  
 sub compute_drive_waf($$)
@@ -135,13 +139,14 @@ sub compute_drive_waf($$)
     my $ddb_ref = shift;
 
     return unless 
-        exists $stats_ref->{'Host Writes'} and
-        exists $stats_ref->{'Controller Writes'};
+        exists $stats_ref->{'Measurements'}{'Total'}{'Host Writes'} and
+        exists $stats_ref->{'Measurements'}{'Total'}{'Controller Writes'};
     
-    my $ctrl_writes = $stats_ref->{'Controller Writes'};
-    my $host_writes = $stats_ref->{'Host Writes'};
+    my $ctrl_writes = $stats_ref->{'Measurements'}{'Total'}{'Controller Writes'};
+    my $host_writes = $stats_ref->{'Measurements'}{'Total'}{'Host Writes'};
 
-    $stats_ref->{'Drive Write Amplification'} = $ctrl_writes / $host_writes
+    $stats_ref->{'Measurements'}{'Total'}{'Drive Write Amplification'} =
+        $ctrl_writes / $host_writes
         unless $host_writes == 0;
 }
 
@@ -150,13 +155,15 @@ sub compute_total_waf($$)
     my $stats_ref = shift;
     my $ddb_ref = shift;
 
-    return unless exists $stats_ref->{'Controller Writes'};
+    return
+        unless exists $stats_ref->{'Measurements'}{'Total'}{'Controller Writes'};
 
     my $ctrl_writes_in_GB =
-        $stats_ref->{'Controller Writes'} / BYTES_PER_GB_BASE2;
+        $stats_ref->{'Measurements'}{'Total'}{'Controller Writes'} /
+        BYTES_PER_GB_BASE2;
 
-    $stats_ref->{'Total Write Amplification'} = 
-        $ctrl_writes_in_GB / $stats_ref->{'GB Write'};
+    $stats_ref->{'Measurements'}{'Total'}{'Total Write Amplification'} = 
+        $ctrl_writes_in_GB / $stats_ref->{'Measurements'}{'Total'}{'GB Write'};
 }
 
 sub compute_nand_metrics($$)
@@ -164,16 +171,22 @@ sub compute_nand_metrics($$)
     my $stats_ref = shift;
     my $ddb_ref = shift;
 
-    return unless exists $stats_ref->{'Drive Write Amplification'};
+    return unless exists
+        $stats_ref->{'Measurements'}{'Total'}{'Drive Write Amplification'};
 
-    my $drive_waf = $stats_ref->{'Drive Write Amplification'};
-    my $app_write_bw = $stats_ref->{'MB/sec Write'};
-    my $app_gb_written = $stats_ref->{'GB Write'};
+    my $drive_waf =
+        $stats_ref->{'Measurements'}{'Total'}{'Drive Write Amplification'};
+    my $app_write_bw =
+        $stats_ref->{'Measurements'}{'Total'}{'MB/sec Write'};
+    my $app_gb_written =
+        $stats_ref->{'Measurements'}{'Total'}{'GB Write'};
 
-    $stats_ref->{'NAND Writes (GB)'} = $app_gb_written * $drive_waf;
+    $stats_ref->{'Measurements'}{'Total'}{'NAND Writes (GB)'} =
+        $app_gb_written * $drive_waf;
 
-    $stats_ref->{'NAND Write BW (MB/sec)'} = $app_write_bw * $drive_waf
-        if exists $stats_ref->{'MB/sec Write'};
+    $stats_ref->{'Measurements'}{'Total'}{'NAND Write BW (MB/sec)'} =
+        $app_write_bw * $drive_waf
+        if exists $stats_ref->{'Measurements'}{'Total'}{'MB/sec Write'};
 }
 
 sub compute_dwpd($$)
@@ -183,10 +196,10 @@ sub compute_dwpd($$)
 
     return unless 
         exists $ddb_ref->{'Rated PE Cycles'} and
-        exists $stats_ref->{'Drive Write Amplification'};
+        exists $stats_ref->{'Measurements'}{'Total'}{'Drive Write Amplification'};
    
     my $rated_cycles = $ddb_ref->{'Rated PE Cycles'};
-    my $waf = $stats_ref->{'Drive Write Amplification'};
+    my $waf = $stats_ref->{'Measurements'}{'Total'}{'Drive Write Amplification'};
 
     return unless $waf > 0;
  
@@ -213,8 +226,10 @@ sub compute_dwpd($$)
     my $adjusted_cycles = $rated_cycles *
         ( $total_nand_bytes / $mapped_bytes );
     
-    $stats_ref->{'DWPD 3yr'} = $adjusted_cycles / ( $waf * 3 * 365 );
-    $stats_ref->{'DWPD 5yr'} = $adjusted_cycles / ( $waf * 5 * 365 );
+    $stats_ref->{'Measurements'}{'Total'}{'DWPD 3yr'} =
+        $adjusted_cycles / ( $waf * 3 * 365 );
+    $stats_ref->{'Measurements'}{'Total'}{'DWPD 5yr'} =
+        $adjusted_cycles / ( $waf * 5 * 365 );
 }
 
 sub test_contains_writes($)
@@ -222,9 +237,9 @@ sub test_contains_writes($)
      my $stats_ref = shift;
 
      die "Writes Mix is not defined\n"
-        unless exists $stats_ref->{'W Mix'};
+        unless exists $stats_ref->{'Workloads'}{'Total'}{'W Mix'};
 
-     return $stats_ref->{'W Mix'} > 0;
+     return $stats_ref->{'Workloads'}{'Total'}{'W Mix'} > 0;
 }
 
 1;
