@@ -363,8 +363,8 @@ END
     if( $self->demo_mode )
     {
         $self->_active_range( 1 );
-        $self->_test_time_override( 5 );
-        $self->_warmup_time_override( 0 );
+        $self->_test_time_override( 10 );  # seconds
+        $self->_warmup_time_override( 5 ); # seconds
     }
   
     if( defined $self->test_time_override )

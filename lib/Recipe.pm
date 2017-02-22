@@ -147,7 +147,13 @@ sub try_legalize_arguments
         }
     }
 
-    # N.B.: You can return zero here to skip this test
+    # skip multitarget tests that are ill-defined
+    if( $step_ref->{'target_count'} > 1 )
+    {
+        return 0 unless $step_ref->{'xml_profile'};
+        return 0 unless $self->cmd_line->io_generator eq 'diskspd';
+        return 0 if $self->cmd_line->raw_disk; 
+    }
     
     return 1;
 }
@@ -183,6 +189,37 @@ sub warn_illegal_args
             warn "$msg\n\n";
         }
     }
+
+    # warn about poorly-defined multitarget tests
+    if( $step_ref->{'target_count'} > 1 )
+    {
+        unless( $step_ref->{'xml_profile'} )
+        {
+            my $msg = "\tWarning!\n";
+            $msg .= "\tRecipe defines multiple targets and no xml profile.\n";
+            $msg .= "\tSkipping step ". $self->current_step . ".";
+
+            warn "$msg\n\n";
+        }
+
+        unless( $self->cmd_line->io_generator eq 'diskspd' )
+        {
+            my $msg = "\tWarning!\n";
+            $msg .= "\tMultitarget tests must use Diskspd.\n";
+            $msg .= "\tSkipping step ". $self->current_step . ".";
+
+            warn "$msg\n\n";
+        }
+
+        if( $self->cmd_line->raw_disk )
+        {
+            my $msg = "\tWarning!\n";
+            $msg .= "\tMultitarget tests cannot run without a file system.\n";
+            $msg .= "\tSkipping step ". $self->current_step . ".";
+
+            warn "$msg\n\n";
+        }
+    }
 }
 
 sub canonicalize_step
@@ -194,12 +231,16 @@ sub canonicalize_step
 
     return unless $kind ~~ [qw( test precondition )]; 
 
+    $step_ref->{'target_count'} = $step_ref->{'target_count'} // 1;
+
     # create read_percentage from write_percentage
     $step_ref->{'read_percentage'} =
-        100 - $step_ref->{'write_percentage'};
+        100 - $step_ref->{'write_percentage'}
+        unless $step_ref->{'target_count'} > 1;
 
     # ensure description can be used as a unique filename
-    $step_ref->{'description'} = make_legal_filename( $step_ref->{'description'});
+    $step_ref->{'description'} =
+        make_legal_filename( $step_ref->{'description'});
 }
 
 sub apply_overrides
@@ -210,12 +251,14 @@ sub apply_overrides
 
     my $kind = $step_ref->{'kind'};
 
-    return unless $kind eq 'test';
+    return unless $kind eq 'test' or 'precondition';
 
     if( defined $self->cmd_line->test_time_override )
     {
         $step_ref->{'run_time'} = $self->cmd_line->test_time_override;
     }
+
+    return unless $kind eq 'test';
 
     if( defined $self->cmd_line->warmup_time_override )
     {
@@ -258,7 +301,7 @@ sub handle_step
     my $step_number = $self->current_step;
 
     my %step = make_step( $kind, $step_number, @step_args );
-
+    
     canonicalize_step( \%step );
     $self->apply_overrides( \%step );
     $self->warn_illegal_args( \%step ) if $do_warnings;
@@ -283,17 +326,18 @@ sub handle_step
 
         $self->advance_current_step();
     }
-    
+
     return $scalar_retval if $context eq 'scalar';
     return @list_retval if $context eq 'list';
 }
 
-sub generate_header($$$$)
+sub generate_header($$$$$)
 {
     my $file_name = shift;
     my $package = shift;
     my $be_permissive = shift;
-    my $be_quiet = shift;
+    my $quiet_stderr = shift;
+    my $quiet_stdout = shift;
 
     my $header = <<"HEADER";
         package $package;
@@ -322,11 +366,14 @@ HEADER
         $header .= "no warnings 'uninitialized';\n";
     }
 
-    if( $be_quiet )
+    # Replace STDOUT and STDERR with NUL
+    if( $quiet_stderr )
     {
-        # Replace STDOUT and STDERR with NUL
-        $header .= "local *STDOUT; open STDOUT, '>NUL';\n";
         $header .= "local *STDERR; open STDERR, '>NUL';\n";
+    }
+    if( $quiet_stdout )
+    {
+        $header .= "local *STDOUT; open STDOUT, '>NUL';\n";
     }
 
     # Improve the quality of diagnostic messages
@@ -354,7 +401,8 @@ sub execute_recipe
 
     my $recipe_warnings = $args{'recipe_warnings'} // 0;
     my $permissive_perl = $args{'permissive_perl'} // 0;
-    my $quiet_stdio = $args{'quiet_stdio'} // 0;
+    my $quiet_stderr = $args{'quiet_stderr'} // 0;
+    my $quiet_stdout = $args{'quiet_stdout'} // 0;
 
     state $eval_count = 0;
 
@@ -414,7 +462,8 @@ sub execute_recipe
                     $file_name,
                     $package,
                     $permissive_perl,
-                    $quiet_stdio
+                    $quiet_stderr,
+                    $quiet_stdout
                 );
             
             $eval_string .= $recipe_str;
@@ -445,7 +494,8 @@ sub execute_recipe
             $self->file_name,
             $package,
             $permissive_perl,
-            $quiet_stdio
+            $quiet_stderr,
+            $quiet_stdout
         );
 
     $eval_string .= $self->recipe_string;
@@ -466,22 +516,22 @@ sub execute_recipe
 
 sub check_unique_test_descriptions
 {
-	my $self = shift;
+    my $self = shift;
 
-	my %desc_hash = ();
+    my %desc_hash = ();
 
-	foreach my $step (@{$self->steps})
-	{
-		
-		my $desc = $step->{'description'};
-		if ( $desc && $step->{'kind'} eq "test" )
-		{
-			die "Test description '$desc' is not unique" 
-				if ( $desc_hash{ $desc } );
-			$desc_hash{ $desc } = 1;
-		}
-	}
+    foreach my $step (@{$self->steps})
+    {
 
+        my $desc = $step->{'description'};
+        if ( $desc && $step->{'kind'} eq "test" )
+        {
+            die "Test description '$desc' is not unique" 
+                if ( $desc_hash{ $desc } );
+            $desc_hash{ $desc } = 1;
+        }
+
+    }
 }
 
 sub get_num_steps
@@ -583,7 +633,7 @@ sub get_test_macro_string
     $str .= q( purge() if $args{'purge'} // 1; )
         if $self->target->do_purge;
 
-    $str .= q( initialize() if $args{'initialize'} // 1; )
+    $str .= q( initialize( %args ) if $args{'initialize'} // 1; )
         if $self->target->do_initialize;
 
     $str .= q( precondition( %args ) if $args{'precondition'} // 1; )
@@ -641,7 +691,8 @@ sub BUILD
     $self->execute_recipe(
         recipe_warnings => 1,
         permissive_perl => 1,
-        quiet_stdio => 1,
+        quiet_stderr => 0,
+        quiet_stdout => 1,
         callback => sub { push @{$self->steps}, {@_}; }
     );
 }
@@ -687,20 +738,29 @@ sub get_announcement_message
     my $step_ref = shift;
     
     my $msg;
-	my $command = $step_ref->{'command'};
+    my $command = $step_ref->{'command'};
 
     if( $step_ref->{'kind'} eq 'test' )
     {
-        my $short_pattern =
-            $step_ref->{'access_pattern'} eq "random" ?  "rnd" : "seq";
+        if( $step_ref->{'target_count'} > 1 )
+        {
+            $msg = $step_ref->{'target_count'} . 
+                "-target test using profile " .
+                $step_ref->{'xml_profile'};
+        }
+        else
+        {
+            my $short_pattern =
+                $step_ref->{'access_pattern'} eq "random" ?  "rnd" : "seq";
 
-        $msg = sprintf( " %4s, %3s, %3d%% read, %3d%% wri, QD=%3d",
-            $step_ref->{'block_size'},
-            $short_pattern,
-            $step_ref->{'read_percentage'},
-            $step_ref->{'write_percentage'},
-            $step_ref->{'queue_depth'}
-        );
+            $msg = sprintf( " %4s, %3s, %3d%% read, %3d%% wri, QD=%3d",
+                $step_ref->{'block_size'},
+                $short_pattern,
+                $step_ref->{'read_percentage'},
+                $step_ref->{'write_percentage'},
+                $step_ref->{'queue_depth'}
+            );
+        }
     } 
     elsif( $step_ref->{'kind'} eq 'idle' )
     {
@@ -788,6 +848,7 @@ sub run_step
     {
         $self->target->initialize(
             msg_prefix => $progress,
+            test_ref => $step_ref
         );
     }
     elsif( $kind eq 'precondition' )
@@ -800,7 +861,7 @@ sub run_step
     }
     elsif( $kind eq 'test' )
     {
-        $self->target->prepare()
+        $self->target->prepare( $step_ref )
             unless $self->target->is_prepared();
         
         unless( $pretend or $self->cmd_line->raw_disk )

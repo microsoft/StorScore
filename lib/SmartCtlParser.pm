@@ -148,15 +148,15 @@ sub parse_attributes($$$)
 
         if( $attribute_id == $host_writes )
         {
-            $stats_ref->{"Host Writes$suffix"} = $raw_value;
+            $stats_ref->{'Measurements'}{'Total'}{"Host Writes$suffix"} = $raw_value;
         }
         elsif( $attribute_id == $ctrl_writes )
         {
-            $stats_ref->{"Controller Writes$suffix"} = $raw_value;
+            $stats_ref->{'Measurements'}{'Total'}{"Controller Writes$suffix"} = $raw_value;
         }
         elsif( $attribute_id == $wear_range )
         {
-            $stats_ref->{"Wear Range$suffix"} = $raw_value;
+            $stats_ref->{'Measurements'}{'Total'}{"Wear Range$suffix"} = $raw_value;
         }
     }
 

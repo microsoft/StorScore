@@ -129,8 +129,9 @@ EXAMPLES
 END_USAGE
 }
 
-sub parse_warmup_file($$)
+sub parse_warmup_file($$$)
 {
+    my $dir = shift;
     my $file_name = shift;
     my $stats_ref = shift;
         
@@ -138,7 +139,7 @@ sub parse_warmup_file($$)
 
     my %warmup_stats;
 
-    parse_test_file( $file_name, \%warmup_stats );
+    parse_test_file( $dir, $file_name, \%warmup_stats );
 
     # Inject into the main stats hash with "Warmup" prefix
     foreach my $key ( keys %warmup_stats )
@@ -179,8 +180,9 @@ sub parse_background_file($$)
     close $LOG;
 }
 
-sub parse_test_file($$)
+sub parse_test_file($$$)
 {
+    my $dir = shift;
     my $file_name = shift;
     my $stats_ref = shift;
             
@@ -208,57 +210,64 @@ sub parse_test_file($$)
         die "Unknown IO generator\n";
     }
         
-    $iogen->parse_cmd_line( $cmd_line, $stats_ref );
+    $iogen->parse_workload( $dir, $cmd_line, $stats_ref );
     $iogen->parse( $LOG, $stats_ref );
         
     close $LOG;
 }
 
-sub compute_rw_amounts($)
+sub compute_rw_amounts($$)
 {
-    my $stats_ref = shift;
+    my $workload_stats = shift;
+    my $measurement_stats = shift;
 
-    my $total_IOs = $stats_ref->{'IOs Total'} // 0;
-    my $total_GB = $total_IOs * $stats_ref->{'Access Size'} / KB_PER_GB;
-    $stats_ref->{'GB Total'} = $total_GB;
-    
-    my $read_frac = $stats_ref->{'R Mix'} / 100;
-    my $write_frac = $stats_ref->{'W Mix'} / 100;
+    # aggregate data from multitarget test does not have one IO size
+    my $total_IOs = $measurement_stats->{'IOs Total'} // 0;
+    my $io_size = $workload_stats->{'Access Size'} // 0; 
+    my $total_GB = $total_IOs * $io_size / KB_PER_GB;
+
+    $measurement_stats->{'GB Total'} = $total_GB;
+
+    my $read_frac = $workload_stats->{'R Mix'} / 100;
+    my $write_frac = $workload_stats->{'W Mix'} / 100;
 
     # The following are *estimates* (not measured)
     # If the workload generator measures this directly, do not overwrite
 
-    unless( exists $stats_ref->{'IOs Read'} )
+    unless( exists $measurement_stats->{'IOs Read'} )
     {
-        $stats_ref->{'IOs Read'}  = $total_IOs * $read_frac; 
-        $stats_ref->{'Notes'} .= "IOs Read is an estimate; ";
+        $measurement_stats->{'IOs Read'}  = $total_IOs * $read_frac; 
+        $measurement_stats->{'Notes'} .= "IOs Read is an estimate; ";
     }
 
-    unless( exists $stats_ref->{'IOs Write'} )
+    unless( exists $measurement_stats->{'IOs Write'} )
     {
-        $stats_ref->{'IOs Write'} = $total_IOs * $write_frac; 
-        $stats_ref->{'Notes'} .= "IOs Write is an estimate; ";
+        $measurement_stats->{'IOs Write'} = $total_IOs * $write_frac; 
+        $measurement_stats->{'Notes'} .= "IOs Write is an estimate; ";
     }
 
-    unless( exists $stats_ref->{'GB Read'} )
+    unless( exists $measurement_stats->{'GB Read'} )
     {
-        $stats_ref->{'GB Read'}  = $total_GB * $read_frac; 
-        $stats_ref->{'Notes'} .= "GB Read is an estimate; ";
+        $measurement_stats->{'GB Read'}  = $total_GB * $read_frac; 
+        $measurement_stats->{'Notes'} .= "GB Read is an estimate; ";
     }
 
-    unless( exists $stats_ref->{'GB Write'} )
+    unless( exists $measurement_stats->{'GB Write'} )
     {
-        $stats_ref->{'GB Write'} = $total_GB * $write_frac; 
-        $stats_ref->{'Notes'} .= "GB Write is an estimate; ";
+        $measurement_stats->{'GB Write'} = $total_GB * $write_frac; 
+        $measurement_stats->{'Notes'} .= "GB Write is an estimate; ";
     }
+
 }
 
-sub compute_steady_state_error_and_warn($)
+sub compute_steady_state_error_and_warn($$$)
 {
     my $stats_ref = shift;
+    my $warmup_stats = shift;
+    my $measurement_stats = shift;
 
-    my $warmup_IOPS = $stats_ref->{'Warmup IOPS Total'};
-    my $test_IOPS = $stats_ref->{'IOPS Total'};
+    my $warmup_IOPS = $warmup_stats->{'IOPS Total'};
+    my $test_IOPS = $measurement_stats->{'IOPS Total'};
  
     return unless defined $warmup_IOPS;
 
@@ -278,7 +287,7 @@ sub compute_steady_state_error_and_warn($)
         $stats_ref->{'Notes'} .= "No steady-state?; ";
     }
 
-    $stats_ref->{'Steady-State Error'} = $rel_diff;
+    $measurement_stats->{'Steady-State Error'} = $rel_diff;
 }
 
 sub get_timestamp_from_smart_file($)
@@ -338,7 +347,9 @@ my @cols =
     { name => 'Display Name'},
     { name => 'User Capacity (GB)' },
     { name => 'Partition Size (GB)' },
+    { name => 'Raw Disk' },
     { name => 'Test Description' },
+    { name => 'Target' },
     {
         name   => 'Timestamp',
         format => 'mm/dd/yyyy HH:mm:ss',
@@ -365,6 +376,7 @@ my @cols =
     },
     {
         name   => 'Alignment',
+        type   => 'io_pattern'
     },
     {
         name   => 'Access Type',
@@ -684,6 +696,7 @@ sub parse_directories(@)
             generate_timestamp( $base_name, \%file_stats );
     
             parse_warmup_file(
+                $dir,
                 "warmup-$base_name.txt",
                 \%file_stats
             );
@@ -694,13 +707,25 @@ sub parse_directories(@)
             );
 
             parse_test_file(
+                $dir,
                 $test_file_name,
                 \%file_stats
             );
 
-            compute_rw_amounts( \%file_stats );
-  
-            compute_steady_state_error_and_warn( \%file_stats );
+            foreach my $workload ( keys $file_stats{'Workloads'} )
+            {
+                compute_rw_amounts( 
+                    $file_stats{'Workloads'}{$workload},
+                    $file_stats{'Measurements'}{$workload}
+                );
+
+                compute_steady_state_error_and_warn( 
+                    \%file_stats,
+                    $file_stats{'Warmup Measurements'}{$workload},
+                    $file_stats{'Measurements'}{$workload}
+                );
+
+            }
 
             if( $try_precondition )
             {
@@ -780,11 +805,11 @@ sub parse_directories(@)
 }
 
 # When extracting, we store a statistic's value directly in a hash.
-# Later, we might want to track other information related to that 
+# Later, we track other information related to that 
 # statistic.  For example, outlier status, or formatting rules. To
 # make this possible, but still enable straight-forward extraction,
 # we run this helper function post-extraction to create a 'value'
-# namespace, making room for other things.
+# namespace and to make room for other things.
 sub inject_value_namespace($)
 {
     # BEFORE:
@@ -803,10 +828,26 @@ sub inject_value_namespace($)
     
     foreach my $key ( keys %$stats_ref )
     {
-        my $value = $stats_ref->{$key};
-        delete $stats_ref->{$key};
+        if( $key =~ /Measurements/ or $key =~ /Workloads/ )
+        {
+            foreach my $target ( keys $stats_ref->{$key} )
+            {
+                foreach my $sub_key ( keys $stats_ref->{$key}{$target} )
+                {
+                    my $value = $stats_ref->{$key}{$target}{$sub_key};
+                    delete $stats_ref->{$key}{$target}{$sub_key};
 
-        $stats_ref->{$key}{'value'} = $value;
+                    $stats_ref->{$key}{$target}{$sub_key}{'value'} = $value;
+                }
+            }
+        }
+        else
+        {
+            my $value = $stats_ref->{$key};
+            delete $stats_ref->{$key};
+
+            $stats_ref->{$key}{'value'} = $value;
+        }
     }
 }
 
@@ -831,7 +872,7 @@ sub build_test_description_to_io_pattern_hash(@)
         next if defined $test_description_to_io_pattern{$test_desc};
 
         my %fields =
-            map { $_ => $stats_ref->{$_} } get_io_pattern_cols(); 
+            map { $_ => $stats_ref->{'Workloads'}{'Total'}{$_} } get_io_pattern_cols(); 
 
         $test_description_to_io_pattern{$test_desc} = \%fields
     }
@@ -859,11 +900,11 @@ sub inject_default_compressibility(@)
     foreach my $stats_ref ( @all_stats )
     {
         my $directory = $stats_ref->{'Directory'};
-        my $compress = $stats_ref->{'Compressibility'};
+        my $compress = $stats_ref->{'Workloads'}{'Total'}{'Compressibility'};
 
         $all_compress{$directory}{$compress}++;
     }
-  
+
     my %default_compress;
 
     foreach my $directory ( keys %all_compress )
@@ -1203,7 +1244,7 @@ sub get_matching_values($$\@)
 
     return 
         grep { defined $_ } # prune undefined vals
-        map { $_->{ $col_name }{'value'} } @matching;
+        map { $_->{'Measurements'}{'Total'}{ $col_name }{'value'} } @matching;
 }
 
 sub is_good_outlier($$$$)
@@ -1234,9 +1275,8 @@ sub is_bad_outlier($$$$)
     );
 }
 
-sub find_outliers($\@)
+sub find_outliers(\@)
 {
-    my $workbook = shift;
     my @all_stats = @{+shift};
    
     my %outliers;
@@ -1261,7 +1301,7 @@ sub find_outliers($\@)
             foreach my $test_stats ( 
                 filter_by_test_description( $test_desc, @all_stats ) )
             {
-                my $val = $test_stats->{$col_name}{'value'};
+                my $val = $test_stats->{'Measurements'}{'Total'}{$col_name}{'value'};
                 
                 next unless defined $val;
 
@@ -1368,46 +1408,60 @@ sub generate_raw_data_sheet($\@)
 
     foreach my $test_stats ( @all_stats )
     {
-        my $col_num = 0;
-
-        foreach my $col ( @cols )
+        foreach my $target ( keys $test_stats->{'Workloads'} )
         {
-            my $col_name = $col->{'name'};
-            my $format_str = $col->{'format'};
-            
-            my $value = $test_stats->{$col_name}{'value'};
+            my $col_num = 0;
+
+            foreach my $col ( @cols )
+            {
+                my $col_name = $col->{'name'};
+                my $format_str = $col->{'format'};
                 
-            if( defined $col->{'protect'} )
-            {
-                $value = protect_excel_string( $value );
+                my $value = $test_stats->{$col_name}{'value'};
+
+                # special-case entries
+                $value = $target if $col_name eq 'Target';
+                $value = $test_stats->{'Warmup Measurements'}{$target}{'MB/sec Total'}{'value'}
+                    if $col_name eq 'Warmup MB/sec Total';
+
+                # entries in the workload and measurement sub-arrays
+                $value = $test_stats->{'Workloads'}{$target}{$col_name}{'value'}
+                    if exists $test_stats->{'Workloads'}{$target}{$col_name};
+                $value = $test_stats->{'Measurements'}{$target}{$col_name}{'value'}
+                    if exists $test_stats->{'Measurements'}{$target}{$col_name};
+                    
+                if( defined $col->{'protect'} )
+                {
+                    $value = protect_excel_string( $value );
+                }
+
+                # Convert Time::Piece object to Excel date format
+                if( ref $value eq 'Time::Piece' )
+                {
+                    $value = unix_date_to_excel_date( $value->epoch )
+                }
+
+                my $format_obj;
+
+                if( defined $format_str )
+                {
+                    $format_obj =
+                        get_format_obj( $workbook, $test_stats, $col_name );
+
+                    $format_obj->set_num_format( $format_str );
+               
+                    # Our percentages are 0 to 100. Excel prefers 0.0 to 1.0.
+                    $value /= 100 if defined $value and $format_str =~ /%/;
+
+                }
+
+                $raw_sheet->write( $row_num, $col_num, $value, $format_obj );
+
+                $col_num++;
             }
 
-            # Convert Time::Piece object to Excel date format
-            if( ref $value eq 'Time::Piece' )
-            {
-                $value = unix_date_to_excel_date( $value->epoch )
-            }
-
-            my $format_obj;
-
-            if( defined $format_str )
-            {
-                $format_obj =
-                    get_format_obj( $workbook, $test_stats, $col_name );
-
-                $format_obj->set_num_format( $format_str );
-           
-                # Our percentages are 0 to 100. Excel prefers 0.0 to 1.0.
-                $value /= 100 if defined $value and $format_str =~ /%/;
-
-            }
-
-            $raw_sheet->write( $row_num, $col_num, $value, $format_obj );
-
-            $col_num++;
+            $row_num++;
         }
-
-        $row_num++;
     }
 
     $raw_sheet->autofilter( 0, 0, 0, $#cols );
@@ -1467,7 +1521,7 @@ sub extract_raw_scores(\@)
             
             my $metric = $col->{'name'};
 
-            my $value = $test_stats->{$metric}{'value'};
+            my $value = $test_stats->{'Measurements'}{'Total'}{$metric}{'value'};
 
             # Every metric doesn't make sense for every test
             $raw_scores{$test_desc}{$metric}{$device_id} = $value
@@ -1642,7 +1696,7 @@ sub compute_weights_as_fractions(\%)
         foreach my $test_desc ( @unique_test_descriptions )
         {
             my %io_pattern = %{$test_description_to_io_pattern{$test_desc}};
-
+            
             foreach my $metric ( @metrics )
             {
                 $total_weight += $weight_func->( $metric, %io_pattern );
@@ -2013,14 +2067,20 @@ die "Nothing to do\n" unless scalar @all_stats > 0;
 
 post_process_stats( @all_stats );
 
+generate_raw_data_sheet( $workbook, @all_stats );
+
+# process the data for outliers and scores
 print "Detecting outliers...\n";
-my %outliers = find_outliers( $workbook, @all_stats );
+my %outliers = find_outliers( @all_stats );
+
+print "Writing XLSX file...\n";
+hilight_outliers( $workbook, %outliers, @all_stats );
 
 print "Computing scores...\n";
 
-my $scores_invalid = 0;
-
 my %raw_scores = extract_raw_scores( @all_stats );
+
+my $scores_invalid = 0;
 
 unless( scores_hash_is_valid( %raw_scores ) )
 {
@@ -2045,8 +2105,6 @@ unless( scores_hash_is_valid( %normalized_scores ) )
     warn "Error while generating normalized scores\n";
     $scores_invalid = 1;
 }
-    
-warn "Scores sheets will not be generated\n" if $scores_invalid;
 
 # Scoring policies compute a weight with arbitrary range.
 # Here we convert to a fractional weight between 0 and 1. 
@@ -2061,10 +2119,6 @@ my %final_scores = combine_scores( %weighted_score_components );
 keys %final_scores == $num_input_dirs
     or warn "Warning: could not generate score for 1+ directories.\n";
 
-print "Writing XLSX file...\n";
-hilight_outliers( $workbook, %outliers, @all_stats );
-generate_raw_data_sheet( $workbook, @all_stats );
-
 generate_scores_sheets( 
     $workbook, 
     %raw_scores,
@@ -2075,6 +2129,8 @@ generate_scores_sheets(
     %weights_as_fractions
 )
 unless $scores_invalid;
+
+warn "Scores sheets will not be generated\n" if $scores_invalid;
 
 $workbook->close() or die "Error closing workbook $outfile: $!\n";
 

@@ -182,10 +182,11 @@ sub parse($$)
     process_percentiles( $stats_ref );
 }
 
-sub parse_cmd_line($$)
+sub parse_workload($$$)
 {
     my $self = shift;
 
+    my $dir = shift;
     my $cmd_line = shift;
     my $stats_ref = shift;
    

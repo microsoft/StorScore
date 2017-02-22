@@ -30,6 +30,7 @@ use strict;
 use warnings;
 use Moose;
 use Util;
+use DiskSpdRunner;
 
 has 'target' => (
     is      => 'ro',
@@ -95,12 +96,53 @@ sub write_num_passes
 sub run_to_steady_state($)
 {
     my $self = shift;
-    
     my %args = @_;
 
     my $msg_prefix = $args{'msg_prefix'};
-    my $output_dir = $args{'output_dir'};
     my $test_ref = $args{'test_ref'};
+    my $output_dir = $args{'output_dir'};
+
+    # preconditioner.exe does not support multiple files
+    # Future work: implement preconditioning in diskspd
+    # and consolidate this
+    if( $test_ref->{'target_count'} > 1 )
+    {
+        $self->run_with_diskspd( $msg_prefix, $test_ref, $output_dir );
+    }
+    else
+    {
+        $self->run_with_preconditioner( $msg_prefix, $test_ref, $output_dir );
+    }
+}
+
+sub run_with_diskspd($$$)
+{
+    my $self = shift;
+    my $msg_prefix = shift;
+    my $test_ref = shift;
+    my $output_dir = shift;
+    
+    my $run_time = '3600'; 
+    $run_time = '10' if ( $self->cmd_line->demo_mode );
+    $run_time = '0' if ( $pretend );
+
+    print $msg_prefix . "static-length ($run_time sec)\n";
+
+    my $iogen = DiskSpdRunner->new(
+        target => $self->target,
+        cmd_line => $self->cmd_line,
+        output_dir => $output_dir
+    );
+
+    $iogen->run( $test_ref, 'precondition' );
+}
+
+sub run_with_preconditioner($$$)
+{
+    my $self = shift;
+    my $msg_prefix = shift;
+    my $test_ref = shift;
+    my $output_dir = shift;
 
     my $write_percentage = $test_ref->{'write_percentage'} // die;
     my $access_pattern   = $test_ref->{'access_pattern'} // die;

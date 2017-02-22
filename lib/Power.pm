@@ -122,7 +122,7 @@ sub parse()
         $average = $sum / $count;
     }
    
-    $stats_ref->{'System Power (W)'} = $average;
+    $stats_ref->{'Measurements'}{'Total'}{'System Power (W)'} = $average;
 
     return 1;
 }
