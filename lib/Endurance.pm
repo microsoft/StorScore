@@ -54,6 +54,9 @@ sub compute_endurance($)
     
     $stats_ref->{'Rated PE Cycles'} = $ddb_ref->{'Rated PE Cycles'};
 
+    compute_internal_capacity( $stats_ref, $ddb_ref );
+    compute_OP( $stats_ref, $ddb_ref );
+
     return unless test_contains_writes( $stats_ref );
 
     compute_host_writes( $stats_ref, $ddb_ref );
@@ -190,21 +193,8 @@ sub compute_dwpd($$)
 
     return unless $waf > 0;
  
-    my $internal_capacity = $ddb_ref->{'Internal Capacity'};
-   
-    my $total_nand_bytes;
-
-    # If DeviceDB contains the actual internal capacity, use that.
-    # Otherwise make a resonable assumption.
-    if( defined $internal_capacity )
-    {
-        $total_nand_bytes = human_to_bytes( $internal_capacity );
-    }
-    else
-    {
-        $total_nand_bytes =
-            round_up_power2( $stats_ref->{'User Capacity (B)'} );
-    }
+    my $total_nand_bytes = $stats_ref->{'Raw Capacity (GiB)'} * 
+                                BYTES_PER_GB_BASE2;
    
     # Give the drive credit for OP and TRIM'd space
     my $mapped_bytes = $stats_ref->{'Partition Size (B)'};
@@ -225,6 +215,49 @@ sub test_contains_writes($)
         unless exists $stats_ref->{'W Mix'};
 
      return $stats_ref->{'W Mix'} > 0;
+}
+
+sub compute_OP($$)
+{
+    my $stats_ref = shift;
+    my $ddb_ref = shift;
+
+    my $exposed_bytes = 
+        $stats_ref->{'Partition Size (GB)'} * BYTES_PER_GB_BASE10;
+
+    # NB: it's conventional to interpret the raw capacity in GB instead of
+    # GiB.  This is how a 512GB drive has "0% OP" and can still maintain an FTL.
+    my $raw_bytes = 
+        $stats_ref->{'Raw Capacity (GiB)'} * BYTES_PER_GB_BASE10;
+
+    my $hidden_bytes = $raw_bytes - $exposed_bytes;
+
+    $stats_ref->{'Overprovisioning'} = 
+        ( $hidden_bytes / $exposed_bytes ) * 100 // "Unavailable";
+}
+
+sub compute_internal_capacity($$)
+{
+    my $stats_ref = shift;
+    my $ddb_ref = shift;
+
+    my $internal_capacity = $ddb_ref->{'Internal Capacity'};
+
+    my $total_nand_bytes;
+
+    # If DeviceDB contains the actual internal capacity, use that.
+    # Otherwise make a resonable assumption.
+    if( defined $internal_capacity )
+    {
+        $total_nand_bytes = human_to_bytes( $internal_capacity );
+    }
+    else
+    {
+        $total_nand_bytes =
+            round_up_power2( $stats_ref->{'User Capacity (B)'} );
+    }
+
+    $stats_ref->{'Raw Capacity (GiB)'} = $total_nand_bytes / BYTES_PER_GB_BASE2;
 }
 
 1;

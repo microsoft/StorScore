@@ -583,7 +583,7 @@ sub get_test_macro_string
     $str .= q( purge() if $args{'purge'} // 1; )
         if $self->target->do_purge;
 
-    $str .= q( initialize() if $args{'initialize'} // 1; )
+    $str .= q( initialize( %args ) if $args{'initialize'} // 1; )
         if $self->target->do_initialize;
 
     $str .= q( precondition( %args ) if $args{'precondition'} // 1; )
@@ -694,12 +694,12 @@ sub get_announcement_message
         my $short_pattern =
             $step_ref->{'access_pattern'} eq "random" ?  "rnd" : "seq";
 
-        $msg = sprintf( " %4s, %3s, %3d%% read, %3d%% wri, QD=%3d",
+        $msg = sprintf( " %4s, %3s, %3d%% wri, QD=%3d, Used=%3d%%",
             $step_ref->{'block_size'},
             $short_pattern,
-            $step_ref->{'read_percentage'},
             $step_ref->{'write_percentage'},
-            $step_ref->{'queue_depth'}
+            $step_ref->{'queue_depth'},
+            $step_ref->{'percent_used'} // 100
         );
     } 
     elsif( $step_ref->{'kind'} eq 'idle' )
@@ -788,6 +788,7 @@ sub run_step
     {
         $self->target->initialize(
             msg_prefix => $progress,
+            test_ref => $step_ref
         );
     }
     elsif( $kind eq 'precondition' )
@@ -800,7 +801,7 @@ sub run_step
     }
     elsif( $kind eq 'test' )
     {
-        $self->target->prepare()
+        $self->target->prepare( $step_ref )
             unless $self->target->is_prepared();
         
         unless( $pretend or $self->cmd_line->raw_disk )
@@ -810,6 +811,14 @@ sub run_step
         }
 
         my $desc = $step_ref->{'description'};
+
+        # Record statistics about this volume
+        my $wmic_runner = WmicRunner->new(
+            target => $self->target,
+            output_dir => $self->output_dir
+        );
+
+        $wmic_runner->collect( "wmic-$desc.txt" );
   
         # Record background activity, if any, during this test
         if( scalar @{$self->bg_processes} > 0 )
@@ -908,7 +917,7 @@ sub run_step
         #
         # Does this make sense in a general purpose exec (fg & bg)?
         
-        $self->target->prepare()
+        $self->target->prepare( $step_ref )
             unless $self->target->is_prepared();
         
         unless( $pretend )

@@ -525,6 +525,11 @@ push @cols,
 # don't want 3rd parties to see these
 push @cols,
 (
+    { name => 'Raw Capacity (GiB)' },
+    { 
+        name => 'Overprovisioning',
+        format => '#.#%',
+    },
     {
         name   => 'Wear Range Before',
         format => '#.#',
@@ -682,6 +687,12 @@ sub parse_directories(@)
             $file_stats{'Test Description'} = $base_name;
 
             generate_timestamp( $base_name, \%file_stats );
+
+            if( -e "wmic-$base_name.txt" )
+            {
+                my $wmic = WmicParser->new();
+                $wmic->parse( \%file_stats, "wmic-$base_name.txt" );
+            }
     
             parse_warmup_file(
                 "warmup-$base_name.txt",

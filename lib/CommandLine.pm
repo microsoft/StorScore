@@ -138,11 +138,11 @@ has 'active_range' => (
     writer  => '_active_range'
 );
 
-has 'partition_bytes' => (
+has 'partition_bytes_override' => (
     is  => 'ro',
     isa => 'Maybe[Int]',
     default => undef,
-    writer  => '_partition_bytes'
+    writer  => '_partition_bytes_override'
 );
 
 has 'demo_mode' => (
@@ -155,7 +155,7 @@ has 'demo_mode' => (
 has 'auto_upload' => (
     is  => 'ro',
     isa => 'Bool',
-    default => 1,
+    default => 0,
     writer  => '_auto_upload'
 );
 
@@ -279,7 +279,7 @@ sub BUILD
         "io_generator=s"         => sub { $self->attr(@_) },
         "io_generator_args=s"    => sub { $self->attr(@_) },
         "active_range=i"         => sub { $self->attr(@_) },
-        "partition_bytes=i"      => sub { $self->attr(@_) },
+        "partition_bytes_override=i"  => sub { $self->attr(@_) },
         "demo_mode!"             => sub { $self->attr(@_) },
         "auto_upload!"           => sub { $self->attr(@_) },
         "results_share=s"        => sub { $self->attr(@_) },
@@ -349,11 +349,11 @@ END
             warn $msg;
         }
 
-        if( defined $self->partition_bytes )
+        if( defined $self->partition_bytes_override )
         {
             my $msg;
 
-            $msg .= "Ignoring --partition_bytes. ";
+            $msg .= "Ignoring --partition_bytes_override. ";
             $msg .= "Not supported in raw disk mode.\n";
 
             warn $msg;

@@ -366,17 +366,27 @@ sub purge
     $self->_is_prepared( 0 );
 }
 
-sub prepare
+sub prepare($)
 {
     my $self = shift;
+    my $test_ref = shift;
 
     return if $self->is_prepared;
 
     if( $self->do_create_new_filesystem )
     {
+        my $partition_bytes;
+
+        $partition_bytes = ( $test_ref->{'percent_used'} / 100.0 ) *
+                              get_drive_size( $self->physical_drive )
+            if defined $test_ref->{'percent_used'};
+
+        $partition_bytes = $self->cmd_line->partition_bytes_override
+            if defined $self->cmd_line->partition_bytes_override;
+
         create_filesystem(
             $self->physical_drive,
-            $self->cmd_line->partition_bytes
+            $partition_bytes
         );
     
         $self->_volume( physical_drive_to_volume( $self->physical_drive ) );
@@ -473,11 +483,7 @@ sub initialize
     my $msg_prefix = $args{'msg_prefix'} // die;
     my $test_ref = $args{'test_ref'};
    
-    if( defined $test_ref )
-    {
-        # Future work: allow for custom init pattern
-        ...
-    }
+    # Future work: allow for custom init pattern
     
     unless( $self->do_initialize )
     {
@@ -497,7 +503,7 @@ sub initialize
         return;
     }
 
-    $self->prepare() unless $self->is_prepared();
+    $self->prepare( $test_ref ) unless $self->is_prepared();
    
     $self->precondition_runner->write_num_passes(
         msg_prefix => $msg_prefix . "Initializing: ",
@@ -534,7 +540,7 @@ sub precondition
         return;
     }
     
-    $self->prepare() unless $self->is_prepared();
+    $self->prepare( $test_ref ) unless $self->is_prepared();
    
     $self->precondition_runner->run_to_steady_state(
         msg_prefix => $msg_prefix . "Preconditioning: ",
