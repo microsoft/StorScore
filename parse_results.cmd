@@ -101,6 +101,7 @@ if( scalar @ARGV < 2 )
 GetOptions(
     "sanitize!"        => \$sanitize,
     "outlier_method=i" => \$outlier_method,
+    "prompt!"          => \$prompt,
 );
 
 my $data_file_glob = "test*.txt";
@@ -2006,10 +2007,13 @@ my $num_input_dirs = scalar @input_dirs;
 
 die "Nothing to do\n" unless $num_input_dirs > 0;
 
-if (-e $outfile)
+if ( -e $outfile )
 {
     print "File $outfile already exists. ";
-    exit 0 unless should_proceed("Overwrite?");
+    if( $prompt )
+    {
+        exit 0 unless should_proceed("Overwrite?");
+    }
     unlink $outfile;
 }
 

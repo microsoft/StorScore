@@ -61,20 +61,16 @@ $device_db{'HFS480G32MED-3410A'} =
     }
 };
 
+$device_db{'HFS960GD0MEE-5410A'} =
+{
+    'Friendly Name'     => 'SK Hynix PE3110 960GB',
+    'Rated PE Cycles'   => 15000,  
+};
+
 $device_db{'NVMe SKhynix PE3110 9'} =
 {
     'Friendly Name'     => 'SK Hynix PE3110 960GB',
     'Rated PE Cycles'   => 15000,  
-    'Host Writes'   =>
-    {
-        'Attribute' => 241,
-        'Unit'      => BYTES_PER_GB_BASE2,
-    },
-    'Controller Writes' =>
-    {
-        'Attribute' => 234,
-        'Unit'      => BYTES_PER_GB_BASE2,
-    }
 };
 
 $device_db{'HFS480G32MNB-2000A'} =

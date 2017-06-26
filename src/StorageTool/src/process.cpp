@@ -30,6 +30,42 @@
 #include "StorageTool.h"
 #include "util.h"
 
+ULONG
+DeviceSecureErase(
+    _In_ PDEVICE_LIST   DeviceList,
+    _In_ ULONG          DeviceIndex
+    )
+{
+    ULONG   status = ERROR_SUCCESS;
+    BOOL    result;
+    DWORD   junk = 0; // discard results
+
+    if (!IsNVMeDevice(DeviceList, DeviceIndex) &&
+        !IsAtaDevice(DeviceList, DeviceIndex)) {
+        status = ERROR_NOT_SUPPORTED;
+        _tprintf(_T(" NOT supported Device Type.  This function is only for NVMe and ATA devices.\n"));
+        goto exit;
+    }
+
+    result = DeviceIoControl(DeviceList[DeviceIndex].Handle,
+        IOCTL_STORAGE_REINITIALIZE_MEDIA, 
+        NULL, 0, // no input buffer
+        NULL, 0, // no output
+        &junk,   // # bytes returned
+        (LPOVERLAPPED)NULL);
+
+    if (!result)
+    {
+        status = GetLastError();
+        _tprintf(_T(" Secure erase failed. Error %ld.\n"), status);
+        goto exit;
+    }
+
+    _tprintf(_T(" Secure erase was successful\n"));
+
+exit:
+    return status;
+}
 
 ULONG
 DeviceHealthInfo(

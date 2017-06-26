@@ -97,6 +97,16 @@ $device_db{'SAMSUNG MZ7WD960HMHP-000MV'} =
     'Rated PE Cycles' => 35000,
 };
 
+$device_db{'SAMSUNG MZ1LV480HCHP-000MU'} = 
+{
+    'Friendly Name'   => 'Samsung PM953 480GB',
+};
+
+$device_db{'SAMSUNG MZ1LW960HMJP-000MV'} = 
+{
+    'Friendly Name'   => 'Samsung PM963 960GB',
+};
+
 $device_db{'NVMe SAMSUNG MZ1WV480'} = 
 {
     'Friendly Name'   => 'Samsung SM953 480GB',

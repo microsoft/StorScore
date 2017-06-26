@@ -54,6 +54,10 @@ my @extract_rules_smart_info =
         match => qr/User Capacity:\s+([\d,]+) bytes/,
         store => 'User Capacity (B)'
     },
+    {
+        match => qr/SATA Version is:\s+(.+),/,
+        store => 'Protocol Version'
+    },
 );
 
 sub post_process($)

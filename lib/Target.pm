@@ -353,12 +353,13 @@ sub purge
         return;
     }
         
-    print "Purging\n"; 
+    print "Purging..."; 
 
-    # TODO: SECURE ERASE 
-    #
-    # When the target is an SSD, we should SECURE ERASE here instead of
-    # or in addition to the "diskpart clean":
+    my $failed = secure_erase( $self->physical_drive );
+    if ($failed) { print "Secure Erase Failed [$failed]"; }
+
+    print "\n";
+
 
     clean_disk( $self->physical_drive );
 

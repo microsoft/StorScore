@@ -54,7 +54,7 @@ test(
 
 test(
     description         => "Random 4k Mix",
-    write_percentage    => 100,
+    write_percentage    => 30,
     access_pattern      => 'random',
     block_size          => '4K',
     queue_depth         => 32,
@@ -64,7 +64,7 @@ test(
 
 test(
     description         => "Random 8k Mix",
-    write_percentage    => 100,
+    write_percentage    => 30,
     access_pattern      => 'random',
     block_size          => '8K',
     queue_depth         => 1,
@@ -108,7 +108,7 @@ test(
 test(
     description         => "Random Mix 20% OP",
     percent_used        => 88.89,
-    write_percentage    => 100,
+    write_percentage    => 30,
     access_pattern      => 'random',
     block_size          => '8K',
     queue_depth         => 32,

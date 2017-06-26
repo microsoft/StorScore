@@ -86,6 +86,7 @@ use vars qw(@ISA @EXPORT);
     human_to_kilobytes
     by_human
     fast_create_file
+    secure_erase
     clean_disk
     create_filesystem
     is_power_of_two
@@ -413,6 +414,18 @@ sub do_diskpart($)
     die "Diskpart failed!\n" if $failed;
 
     unlink $script_file or warn "Could not unlink $script_file: $!";
+}
+
+sub secure_erase($)
+{
+    my $pdnum = shift;
+
+    my $cmd = "";
+    $cmd .= "StorageTool.exe ";
+    $cmd .= "-SecureErase ";
+    $cmd .= "Disk " . $pdnum . " ";
+    
+    return execute_task( $cmd, quiet => 1 );
 }
 
 sub clean_disk($)

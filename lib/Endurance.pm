@@ -46,27 +46,30 @@ sub compute_endurance($)
     my $model_name = $stats_ref->{'Device Model'};
     my $ddb_ref = $device_db{ $model_name };
 
-    unless( defined $ddb_ref )
-    {
-        warn "\tNo entry in DeviceDB for $model_name. Cannot compute WAF.\n";
-        return;
-    }
-    
+    compute_internal_capacity( $stats_ref, $ddb_ref );
+    compute_OP( $stats_ref );
+
     $stats_ref->{'Rated PE Cycles'} = $ddb_ref->{'Rated PE Cycles'};
 
-    compute_internal_capacity( $stats_ref, $ddb_ref );
-    compute_OP( $stats_ref, $ddb_ref );
-
     return unless test_contains_writes( $stats_ref );
+
+    unless( defined $ddb_ref or 
+            $stats_ref->{'Protocol Version'} eq 'NVME' )
+    {
+        warn "\tNot an NVMe drive, and no entry in DeviceDB \n";
+        warn "\tfor $model_name. Cannot compute WAF.\n";
+
+        return;
+    }
 
     compute_host_writes( $stats_ref, $ddb_ref );
     compute_controller_writes( $stats_ref, $ddb_ref );
 
-    compute_file_system_waf( $stats_ref, $ddb_ref );
-    compute_drive_waf( $stats_ref, $ddb_ref );
-    compute_total_waf( $stats_ref, $ddb_ref );
+    compute_file_system_waf( $stats_ref );
+    compute_drive_waf( $stats_ref );
+    compute_total_waf( $stats_ref );
 
-    compute_nand_metrics( $stats_ref, $ddb_ref );
+    compute_nand_metrics( $stats_ref );
     compute_dwpd( $stats_ref, $ddb_ref );
 }
 
@@ -104,6 +107,7 @@ sub compute_controller_writes($$)
     my $after = $stats_ref->{'Controller Writes After'};
     my $diff = $after - $before;
 
+    # if the device db doesn't define a unit, assume it's an NVMe drive with the default units
     my $units = $ddb_ref->{'Controller Writes'}{'Unit'} // BYTES_PER_MB_BASE2;
 
     warn "\tPossible overflow in ctlr writes SMART counter. WAF is wrong.\n"
@@ -118,10 +122,9 @@ sub compute_controller_writes($$)
         if exists $ddb_ref->{'Controller Writes'}{'Additive'};
 }
 
-sub compute_file_system_waf($$)
+sub compute_file_system_waf($)
 {
     my $stats_ref = shift;
-    my $ddb_ref = shift;
 
     return unless exists $stats_ref->{'Host Writes'};
 
@@ -132,10 +135,9 @@ sub compute_file_system_waf($$)
         $host_writes_in_GB / $stats_ref->{'GB Write'};
 }
                  
-sub compute_drive_waf($$)
+sub compute_drive_waf($)
 {
     my $stats_ref = shift;
-    my $ddb_ref = shift;
 
     return unless 
         exists $stats_ref->{'Host Writes'} and
@@ -148,10 +150,9 @@ sub compute_drive_waf($$)
         unless $host_writes == 0;
 }
 
-sub compute_total_waf($$)
+sub compute_total_waf($)
 {
     my $stats_ref = shift;
-    my $ddb_ref = shift;
 
     return unless exists $stats_ref->{'Controller Writes'};
 
@@ -162,10 +163,9 @@ sub compute_total_waf($$)
         $ctrl_writes_in_GB / $stats_ref->{'GB Write'};
 }
 
-sub compute_nand_metrics($$)
+sub compute_nand_metrics($)
 {
     my $stats_ref = shift;
-    my $ddb_ref = shift;
 
     return unless exists $stats_ref->{'Drive Write Amplification'};
 
@@ -184,9 +184,8 @@ sub compute_dwpd($$)
     my $stats_ref = shift;
     my $ddb_ref = shift;
 
-    return unless 
-        exists $ddb_ref->{'Rated PE Cycles'} and
-        exists $stats_ref->{'Drive Write Amplification'};
+    return unless exists $ddb_ref->{'Rated PE Cycles'} and
+                  exists $stats_ref->{'Drive Write Amplification'};
    
     my $rated_cycles = $ddb_ref->{'Rated PE Cycles'};
     my $waf = $stats_ref->{'Drive Write Amplification'};
@@ -217,10 +216,9 @@ sub test_contains_writes($)
      return $stats_ref->{'W Mix'} > 0;
 }
 
-sub compute_OP($$)
+sub compute_OP($)
 {
     my $stats_ref = shift;
-    my $ddb_ref = shift;
 
     my $exposed_bytes = 
         $stats_ref->{'Partition Size (GB)'} * BYTES_PER_GB_BASE10;

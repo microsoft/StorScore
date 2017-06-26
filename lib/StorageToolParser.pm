@@ -57,6 +57,10 @@ my @extract_rules_smart_info =
         match => qr/User Capacity:\s+([\d,]+) bytes/,
         store => 'User Capacity (B)'
     },
+    {
+        match => qr/Disk #\d+\s+:\s+\[(\S+)\s+\]/,
+        store => 'Protocol Version'
+    },
 );
 
 my @extract_rules_log_entries =

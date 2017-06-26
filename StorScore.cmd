@@ -208,6 +208,30 @@ else
 
 exit 0 unless should_proceed();
 
+# Check whether the system can secure erase the drive.
+# This check is destructive, so get the user's consent first.
+if( $target->do_purge ) 
+{
+    my $failed = secure_erase( $target->physical_drive );
+    if ( $failed )
+    {
+        my $component = "System";
+        if( $failed == 1 ) { $component = "Drive"; }
+
+        my $msg;
+
+        $msg .= "\tWarning!\n";
+        $msg .= "\t$component does not support Secure Erase\n";
+        $msg .= "\tStorScore will use only `diskpart clean'\n";
+        $msg .= "\tSSD history effect may not be eliminated\n\n";
+    
+        warn $msg;
+
+        exit 0 unless should_proceed();
+    }
+}
+
+
 die "Results subdirectory $output_dir already exists!\n"
     if -e $output_dir;
 

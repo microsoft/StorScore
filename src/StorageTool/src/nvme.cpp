@@ -327,9 +327,11 @@ DeviceNVMeHealthInfo(
                              NULL
     );
 
+    _tprintf(_T("\n\tNVMe - Info from Microsoft's Vendor-Specific Log Page:\n\n"));
+
     if (!result || (returnedLength == 0)) {
         status = GetLastError();
-        //_tprintf(_T("\tDeviceHealthInfo: Microsoft SMART/Health Information Log failed. Error Code %d.\n"), status);
+        _tprintf(_T("\t Error: Reading the log failed. Error Code %d.\n"), status);
         goto exit;
     }
 
@@ -340,7 +342,7 @@ DeviceNVMeHealthInfo(
         (protocolDataDescr->Size != sizeof(STORAGE_PROTOCOL_DATA_DESCRIPTOR))) {
 
         status = ERROR_INVALID_DATA;
-        _tprintf(_T("\tDeviceHealthInfo: Microsoft SMART/Health Information Log - data descriptor header not valid.\n"));
+        _tprintf(_T("\t Error: The data descriptor header of the log page is not valid.\n"));
         goto exit;
     }
 
@@ -350,7 +352,7 @@ DeviceNVMeHealthInfo(
         (protocolData->ProtocolDataLength < sizeof(NVME_HEALTH_INFO_MSFT_LOG_V0))) {
 
         status = ERROR_INVALID_DATA;
-        _tprintf(_T("\tDeviceHealthInfo: Microsoft SMART/Health Information Log - ProtocolData Offset/Length not valid.\n"));
+        _tprintf(_T("\t Error: The ProtocolData Offset/Length of the log page is not valid.\n"));
         goto exit;
     }
 
@@ -366,7 +368,7 @@ DeviceNVMeHealthInfo(
         ULONGLONG   temp8 = 0;
         ULONG       temp4 = 0;
 
-        _tprintf(_T("\n\tNVMe - Info from Microsoft Health/Smart Log Version %d.\n\n"), version);
+        _tprintf(_T("\t Version %d\n"), version);
 
         if (version == NVME_LOG_PAGE_MSFT_HEALTH_VERSION_0) {
             temp.Low = ((PULONG128)msftInfo0->MediaUnitsWritten)->Low;

@@ -487,6 +487,7 @@ typedef struct _COMMAND_OPTIONS {
         ULONG   Detail : 1;
         ULONG   HealthInfo : 1;
         ULONG   LogPageInfo : 1;
+        ULONG   SecureErase : 1;
         ULONG   AtaCommand : 1;
         ULONG   FirmwareInfo : 1;
         ULONG   FirmwareUpdate : 1;
@@ -610,6 +611,12 @@ DeviceGetStorageFirmwareInfo(
     _Out_ PUCHAR*           Buffer,
     _Out_ DWORD*            BufferLength,
     _In_ BOOLEAN            DisplayResult
+    );
+
+ULONG
+DeviceSecureErase(
+    _In_ PDEVICE_LIST DeviceList,
+    _In_ ULONG        DeviceIndex
     );
 
 ULONG

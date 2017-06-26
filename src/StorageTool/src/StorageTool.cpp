@@ -47,6 +47,7 @@ PrintHelp(
              _T("\tStorageTool -Detail <Disk|Cdrom> <device#>\n")
              _T("\tStorageTool -HealthInfo <Disk|Cdrom> <device#>\n")
              _T("\tStorageTool -LogPageInfo <Disk|Cdrom> <device#>\n")
+             _T("\tStorageTool -SecureErase <Disk|Cdrom> <device#>\n")
              // Device Map
     );
 
@@ -109,6 +110,8 @@ Return Value:
 
     if (CompareArgs(Arguments[0], _T("-Detail"))) {
         Options->Operation.Detail = TRUE;
+    } else if (CompareArgs(Arguments[0], _T("-SecureErase"))) {
+        Options->Operation.SecureErase = TRUE;
     } else if (CompareArgs(Arguments[0], _T("-HealthInfo"))) {
         Options->Operation.HealthInfo = TRUE;
     } else if (CompareArgs(Arguments[0], _T("-LogPageInfo"))) {
@@ -178,6 +181,7 @@ _tmain(
 {
     BOOLEAN         result = FALSE;
     COMMAND_OPTIONS commandOptions = {0};
+    ULONG           status = ERROR_SUCCESS;
 
     //
     // Validate input parameters.
@@ -285,13 +289,15 @@ _tmain(
         // Run requested operation.
         //
         if (commandOptions.Operation.Detail) {
-            //DeviceIdentify(&deviceList, 0);
+            //status = DeviceIdentify(&deviceList, 0);
         } else if (commandOptions.Operation.HealthInfo) {
-            DeviceHealthInfo(&deviceList, 0);
+            status = DeviceHealthInfo(&deviceList, 0);
         } else if (commandOptions.Operation.LogPageInfo) {
-            DeviceLogPageInfo(&deviceList, 0);
+            status = DeviceLogPageInfo(&deviceList, 0);
+        } else if (commandOptions.Operation.SecureErase) {
+            status = DeviceSecureErase(&deviceList, 0);
         } else if (commandOptions.Operation.AtaCommand) {
-            //DeviceAtaCommandPassThrough(&deviceList, 0, &commandOptions);
+            //status = DeviceAtaCommandPassThrough(&deviceList, 0, &commandOptions);
         } else if (commandOptions.Operation.FirmwareInfo) {
             BOOL    result = FALSE;
             PUCHAR  buffer = NULL;
@@ -316,7 +322,7 @@ _tmain(
         } 
     }
 
-    return ERROR_SUCCESS;
+    return status;
 }
 
 
