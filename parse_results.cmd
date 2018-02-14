@@ -1433,6 +1433,7 @@ sub scores_hash_is_valid(\%)
     # We should see one value per device
     my $expected_num_values = scalar @unique_device_ids;
 
+    my $failed = 0;
     foreach my $test_desc ( keys %scores )
     {
         foreach my $metric ( keys %{ $scores{$test_desc} } )
@@ -1441,14 +1442,15 @@ sub scores_hash_is_valid(\%)
 
             if( $num_values != $expected_num_values )
             {
-                warn "Unexpected number of values: $test_desc, $metric\n";
+                my $ratio = "$num_values/$expected_num_values";
+                warn "Unexpected number of values ($ratio): $test_desc, $metric\n";
 
-                return 0;
+                $failed = 1;
             }
         }
     }
 
-    return 1;
+    return $failed;
 }
 
 sub extract_raw_scores(\@)

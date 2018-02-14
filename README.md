@@ -100,7 +100,7 @@ Questions, comments, bug reports, and especially accolades may be directed
 to the developers:
     Laura Caulfield <laura.caulfield@microsoft.com>
     Mark Santaniello <marksan@fb.com>
-    Bikash Sharma <bsharma@microsoft.com>
+    Bikash Sharma <bsharma@fb.com>
 
 Open Source Code of Conduct
 ---------------------------

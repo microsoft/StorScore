@@ -26,15 +26,33 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-test(
-    description         => "2M Sequential Writes",
-    write_percentage    => 100, 
-    access_pattern      => 'sequential',
-    block_size          => '2M',
-    queue_depth         => 128,
-    warmup_time         => 0,
-    run_time            => 7200,
-    precondition        => 0,
-    initialize          => 0,
-    purge		=> 0,
-); 
+if($target->is_ssd)
+{
+   test(
+       description         => "Max Power for SSD",
+       write_percentage    => 100, 
+       access_pattern      => 'sequential',
+       block_size          => '2M',
+       queue_depth         => 128,
+       warmup_time         => 0,
+       run_time            => 7200,
+       precondition        => 0,
+       initialize          => 0,
+       purge               => 0,
+   );
+}
+else
+{
+   test(
+       description         => "Max Power for HDD",
+       write_percentage    => 100, 
+       access_pattern      => 'random',
+       block_size          => '4k',
+       queue_depth         => 128,
+       warmup_time         => 0,
+       run_time            => 7200,
+       precondition        => 0,
+       initialize          => 0,
+       purge               => 0,
+   );
+}

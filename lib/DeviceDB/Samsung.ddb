@@ -112,6 +112,11 @@ $device_db{'NVMe SAMSUNG MZ1WV480'} =
     'Friendly Name'   => 'Samsung SM953 480GB',
     'Rated PE Cycles' => 18000,
 };
+$device_db{'SAMSUNG MZ1WV480HCGL-000MV'} =
+{
+    'Friendly Name'   => 'Samsung SM953 480GB',
+    'Rated PE Cycles' => 18000,
+};
 
 $device_db{'NVMe Samsung SSD PM95'} = 
 {
@@ -120,6 +125,12 @@ $device_db{'NVMe Samsung SSD PM95'} =
 };
 
 $device_db{'NVMe SAMSUNG MZ1LV960'} = 
+{
+    'Friendly Name'   => 'Samsung PM953 960GB',
+    'Rated PE Cycles' => 6000,
+};
+
+$device_db{'SAMSUNG MZ1LV960HCJH-000MU'} = 
 {
     'Friendly Name'   => 'Samsung PM953 960GB',
     'Rated PE Cycles' => 6000,

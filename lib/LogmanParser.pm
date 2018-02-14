@@ -80,7 +80,7 @@ sub parse($$)
         
         if( $counter_name =~ /Processor Time/ )
         {
-            $stats_ref->{'CPU Util'} = $average / 100;
+            $stats_ref->{'CPU Util'} = $average;
             $cpu_seen = 1;
         }
         elsif( $counter_name =~ /Disk Queue Length/ )
